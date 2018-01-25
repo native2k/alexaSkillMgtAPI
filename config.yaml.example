@@ -1,0 +1,11 @@
+AmazonOAuth:
+  clientID: amazon apps client id    # mandatory
+  clientSecret: amazon apps secret   # mandator
+  webPort: 8080 # webport server is listening
+  # following values can be left out .. will be filled when executing
+  # > python alexaSkillMgtAPI/authweb.py
+  accessToken: amazonaccesstoken
+  expiresIn: datetime 
+  refreshToken: amazonrefreshtoken 
+  tokenType: bearer
+  

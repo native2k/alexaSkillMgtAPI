@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to Alexa Skill Management API's documentation!
-======================================
+======================================================
 
 Contents:
 
