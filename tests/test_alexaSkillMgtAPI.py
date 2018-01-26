@@ -8,7 +8,7 @@ test_alexaSkillMgtAPI
 Tests for `alexaSkillMgtAPI` module.
 """
 
-import unittest
+import pytest
 
 from alexaSkillMgtAPI import alexaSkillMgtAPI
 

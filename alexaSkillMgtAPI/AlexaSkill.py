@@ -1,46 +1,504 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import types
+import re
+from copy import copy
+
+KWARGS_PAT = re.compile('\.{([a-z]+)}\.')
+
+def validConvert(value, adef):
+    # print "aDef: %s value: %s Valuetyep: %s" % (adef, value, type(value))
+    # if not isinstance(adef, types.ListType):
+    #     print "isnstand %s"  % isinstance(value, adef)
+    if isinstance(adef, types.ListType):
+        if value not in adef:
+            raise ValueError('Value "%s" must be one of %s' % (
+                value, adef))
+    elif not isinstance(value, adef):
+        if adef == types.StringType and isinstance(value, types.IntType) and not isinstance(value, types.BooleanType):
+            return str(value)   # exception for numeric value
+        elif adef == types.BooleanType and value in [1, 0]:
+            return bool(value)
+
+        raise ValueError('Value "%s" is type %s but must be %s' % (
+            value, type(value), adef))
+    return value
+
+class ListOverlay(list):
+
+    class Iterator():
+        def __init__(self, n, reverse=False):
+            self.i = 0
+            self.reverse = reverse
+            if self.reverse:
+                self.i = len(n) - 1
+            self.n = n
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            if self.i < len(self.n) and self.i >= 0:
+                i = self.n[self.i]
+                if self.reverse:
+                    self.i -= 1
+                else:
+                    self.i += 1
+                return i
+            else:
+                raise StopIteration()
+
+    def __init__(self, definition, orig, allowedTypes=None):
+        self._definition = definition
+        self._orig = orig
+        self._allowedTypes = allowedTypes
+
+    def _doValidate(self, value):
+        if self._allowedTypes is None:
+            return value
+        else:
+            return validConvert(value, self._allowedTypes)
+
+    def __add__(self, y):
+        res = self._orig.__add__([{self._definition: _doValidate(v)} for v in y])
+        return ListOverlay(self._definition, res, self._allowedTypes)
+
+    def __contains__(self, y):
+        return self._orig.__contains__({self._definition: y})
+
+    def __delitem__(self, y):
+        self._orig.__delitem__(y)
+
+    def __delslice__(self, i, j):
+        self._orig.__delslice__(i, j)
+
+    def __eq__(self, y):
+        return self._orig.__eq__([{self._definition: v} for v in y])
+
+    # format?
+    def __ge__(self, y):
+        return self._orig.__ge__([{self._definition: v} for v in y])
+
+    def __getitem__(self, y):
+        return self._orig.__getitem__(y)[self._definition]
+
+    def __getslice__(self, i, y):
+        return [n[self._definition] for n in self._orig.__getslice__(i, j)]
+
+    def __gt__(self, y):
+        return self._orig.__gt__([{self._definition: v} for v in y])
+
+    def __hash__(self):
+        return self._orig.__hash__()
+
+    def __iadd__(self, y):
+        self._orig.__iadd__([{self._definition: v} for v in y])
+        return self
+
+    def __imul__(self, y):
+        self._orig.__imul__([{self._definition: v} for v in y])
+        return self
+
+    def __ne__(self, y):
+        return self._orig.__ne__([{self._definition: v} for v in y])
+
+    def __iter__(self):
+        return self.Iterator(self)
 
 
-def AlexaSkill(object):
+    def __le__(self, y):
+        return self._orig.__le__([{self._definition: v} for v in y])
+
+    def __len__(self):
+        return self._orig.__len__()
+
+    def __lt__(self, y):
+        return self._orig.__lt__([{self._definition: v} for v in y])
+
+    def __mul__(self, y):
+        res = self._orig.__mul__([{self._definition: v} for v in y])
+        return ListOverlay(self._definition, res)
+
+    def __ne__(self, y):
+        return self._orig.__lt__([{self._definition: v} for v in y])
+
+    # def __new__(self, S):
+    #     return self._orig.__new__(S)
+
+    #reduce
+    #reduce ex
+
+    def __repr__(self):
+        return [v[self._definition] for v in self._orig].__repr__()
+
+    def __reversed__(self):
+        return self.Iterator(self, True)
+
+    def __rmul__(self, n):
+        return ListOverlay(self._definition, self._orig.__rmul__(n), self._allowedTypes)
+
+    def __setitem__(self, i, y):
+        self._orig[i][self._definition] = self._doValidate(y)
+
+    def __setslice__(self, i, j, y):
+        self._orig[i:j] = [{self._definition: self._doValidate(n)} for n in y]
+
+
+    def __sizeof__(self):
+        return self._orig.__sizeof__()
+
+    def extend(self, iterable):
+        for i in iterable:
+            self.append(self._doValidate(i))
+
+    def append(self, object):
+        self._orig.append({self._definition: self._doValidate(object)})
+
+    def index(self, object):
+        return self._orig.index({self._definition: object})
+
+    def insert(self, index, object):
+        return self._orig.insert(index, {self._definition: self._doValidate(object)})
+
+    def pop(self, index=-1):
+        return self._orig.pop(index)[self._definition]
+
+    def remove(self, value):
+        return self._origi.remove({self._definition: value})
+
+    def reverse(self):
+        self._orig.reverse()
+
+    def sort(self, cmp=None, key=None, reverse=False):
+        cmpNew = None
+        if cmp is not None:
+            def cmpNew(x, y):
+                return cmp(x[self._definition], y[self._definition])
+
+        self._orig.sort(cmpNew, key, reverse)
+
+
+class RestrictedDict():
+    def __init__(self, definition, *args, **kwargs):
+        """
+        definition = {
+            'keyname': type,
+        }
+        """
+        self._definition = definition
+        self._data = dict(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        self._data[key] = validConvert(value, self._definition.get(key))
+
+    def setdefault(self, key, value=None):
+        return self._data.setdefault(key, validConvert(value, self._definition.get(key)))
+
+    def __getattr__(self, attrib):
+        # print "__getattr__ called for %s" % attrib
+        return getattr(self._data, attrib)
+
+    # def __setattr__(self, attrib, value):
+    #     if attrib not in ['_definition', 'self._data']
+    #     return setattr(self._data, attrib, value)
+
+class RestrictedList():
+    def __init__(self, definition, *args, **kwargs):
+        self._definition = definition
+        self._data = list(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        self._data[key] = validConvert(value, self._definition)
+
+    def __setslice__(self, i, j, y):
+        self._data.__setslice__(i, j, [validConvert(v, self._definition) for v in y])
+
+    def append(self, value):
+        self._data.append(validConvert(value, self._definition))
+
+    def extend(self, value):
+        self._data.extend([validConvert(v, self._definition) for v in value])
+
+    def insert(self, index, object):
+        self._data.insert(index, validConvert(object, self._definition))
+
+    def __getattr__(self, attrib):
+        print "__getattr__ called for %s" % attrib
+        return getattr(self._data, attrib)
+
+
+
+
+class AlexaSkill(object):
     """
-{u'skillManifest': {u'apis': {u'custom': {u'endpoint': {u'sslCertificateType': u'Wildcard',
-                                                        u'uri': u'https://rl7pobxxp1.execute-api.eu-west-1.amazonaws.com/fefe_v1'},
-                                          u'interfaces': [{u'type': u'RENDER_TEMPLATE'}]}},
-                    u'manifestVersion': u'1.0',
-                    u'permissions': [],
-                    u'privacyAndCompliance': {u'allowsPurchases': False,
-                                              u'containsAds': False,
-                                              u'isChildDirected': False,
-                                              u'isExportCompliant': True,
-                                              u'usesPersonalInfo': False},
-                    u'publishingInformation': {u'category': u'NEWS',
-                                               u'distributionCountries': [],
-                                               u'isAvailableWorldwide': True,
-                                               u'locales': {u'de-DE': {u'description': u'Mit diesem Skill k\xf6nnt ihr euch in aller Ruhe zur\xfccklehnen und euch die aktuellen Verschw\xf6rungstheorien von Felix von Leitner bequem von Alexa vorlesen lassen.\n\nWenn ihr einen Beitrag \xfcberspringen  wollt sagt einfach "weiter" oder "stop" um das Vortragen zu beenden.\n\n\n\nUpdate:\n - Nun auch mit Unterst\xfctzung fuer Echo Show',
-                                                                       u'examplePhrases': [u'Alexa, starte Fefes Blog'],
-                                                                       u'keywords': [u'fefe',
-                                                                                     u'blog',
-                                                                                     u'Verschw\xf6rungstheorien',
-                                                                                     u'nerd'],
-                                                                       u'largeIconUri': u'https://api.amazonalexa.com/v0/skills/amzn1.ask.skill.dc08640f-eeab-45d5-84b7-4c5bb7e10101/images/eyJkIjoiQlRlNktNRHREOCtFOTljUXdOV3diZUE3S1pqZ2RFd3BlSk5KRmpIVFB3R0o0aUl3a1hSU2NFWmJ0S0Y2M3Y2dG9VSEZTMU82TXJ1MTMydHJPci9zUFFVNXFNc0tlR0xzRjhrVWN1REVGU3ZnVEhoN25KWTY5cVh6QzJPT2NaN21WRGo3Q1FXVWNaWjdKSnJSZE4rWmZRPT0iLCJpdiI6Ill3Sm1RNU5jMFJIYU5tOEQ0WlF5ZGc9PSIsInYiOjF9',
-                                                                       u'name': u'Fefes Blog (inoffiziell)',
-                                                                       u'smallIconUri': u'https://api.amazonalexa.com/v0/skills/amzn1.ask.skill.dc08640f-eeab-45d5-84b7-4c5bb7e10101/images/eyJkIjoicmNDVmZsOWpiWVVmb2FvcGl0MVVYQU4wb2hXTWtldWFqY29MZmc2TExIQ0wwZ3VTZDMzRGhFM0dBVHBkaWR6dzBYS2oraStsOVMwWVMyUC9wRmtlZFVaWEFuOFJ4bE02bEtUUW4wbDJ6UVlqeEpCWFhUTjNXUGNNNjlHbk9LQTIiLCJpdiI6IjYzVDlUZitmWUVFOEQycHdndXJkVlE9PSIsInYiOjF9',
-                                                                       u'summary': u'Liest die aktuellen Beitr\xe4ge von blog.fefe.de vor.'}},
-                                               u'testingInstructions': u'just start the skill and enjoy.'}}}
     """
-    _valid_locales = ['de-DE', 'en-US']
-    _valid_interfaces = ['RENDER_TEMPLATE']
 
-    def __init__(self, AlexaSkillMmgtAPI, skillId):
+    _subdict = {
+        'category': [
+            'ALARMS_AND_CLOCKS', 'ASTROLOGY', 'BUSINESS_AND_FINANCE', 'CALCULATORS', 'CALENDARS_AND_REMINDERS',
+            'CHILDRENS_EDUCATION_AND_REFERENCE', 'CHILDRENS_GAMES', 'CHILDRENS_MUSIC_AND_AUDIO',
+            'CHILDRENS_NOVELTY_AND_HUMOR', 'COMMUNICATION', 'CONNECTED_CAR', 'COOKING_AND_RECIPE',
+            'CURRENCY_GUIDES_AND_CONVERTERS', 'DATING', 'DELIVERY_AND_TAKEOUT', 'DEVICE_TRACKING',
+            'EDUCATION_AND_REFERENCE', 'EVENT_FINDERS', 'EXERCISE_AND_WORKOUT', 'FASHION_AND_STYLE', 'FLIGHT_FINDERS',
+            'FRIENDS_AND_FAMILY', 'GAME_INFO_AND_ACCESSORY', 'GAMES', 'HEALTH_AND_FITNESS', 'HOTEL_FINDERS',
+            'KNOWLEDGE_AND_TRIVIA', 'MOVIE_AND_TV_KNOWLEDGE_AND_TRIVIA', 'MOVIE_INFO_AND_REVIEWS', 'MOVIE_SHOWTIMES',
+            'MUSIC_AND_AUDIO_ACCESSORIES', 'MUSIC_AND_AUDIO_KNOWLEDGE_AND_TRIVIA',
+            'MUSIC_INFO_REVIEWS_AND_RECOGNITION_SERVICE', 'NAVIGATION_AND_TRIP_PLANNER', 'NEWS', 'NOVELTY',
+            'ORGANIZERS_AND_ASSISTANTS', 'PETS_AND_ANIMAL', 'PODCAST', 'PUBLIC_TRANSPORTATION',
+            'RELIGION_AND_SPIRITUALITY', 'RESTAURANT_BOOKING_INFO_AND_REVIEW', 'SCHOOLS', 'SCORE_KEEPING',
+            'SELF_IMPROVEMENT', 'SHOPPING', 'SMART_HOME', 'SOCIAL_NETWORKING', 'SPORTS_GAMES', 'SPORTS_NEWS',
+            'STREAMING_SERVICE', 'TAXI_AND_RIDESHARING', 'TO_DO_LISTS_AND_NOTES', 'TRANSLATORS', 'TV_GUIDES',
+            'UNIT_CONVERTERS', 'WEATHER', 'WINE_AND_BEVERAGE', 'ZIP_CODE_LOOKUP',
+        ],
+        'interfaces': [
+            'AUDIO_PLAYER', 'VIDEO_APP', 'RENDER_TEMPLATE',
+        ],
+        'eventSubscriptions': {
+            'eventName': [
+                "SKILL_ENABLED", "SKILL_DISABLED",
+                "SKILL_PERMISSION_ACCEPTED", "SKILL_PERMISSION_CHANGED",
+                "SKILL_ACCOUNT_LINKED",
+                "ITEMS_CREATED", "ITEMS_UPDATED","ITEMS_DELETED",
+            ],
+        },
+        'permissions': {
+            'name': [
+                "alexa::devices:all:address:full:read",
+                "alexa:devices:all:address:country_and_postal_code:read",
+                "alexa::household:lists:read",
+                "alexa::household:lists:write",
+            ],
+        },
+    }
+
+    # _subdict = {
+    #     'permissions': 'name',
+    #     'eventSubscriptions': 'eventName',
+    # }
+
+    _structure = {
+        # publishing information
+        'locales': (False, 'publishingInformation.locales', 'keys'),
+        'summary': (True, 'publishingInformation.locales.{locale}.summary', types.StringType),
+        'examplePhrases': (True, 'publishingInformation.locales.{locale}.examplePhrases', types.ListType),
+        'keywords': (True, 'publishingInformation.locales.{locale}.keywords', types.ListType),
+        'name': (True, 'publishingInformation.locales.{locale}.name', types.StringType),
+        'smallIconUri': (True, 'publishingInformation.locales.{locale}.smallIconUri', types.StringType),
+        'largeIconUri': (True, 'publishingInformation.locales.{locale}.largeIconUri', types.StringType),
+        'description': (True, 'publishingInformation.locales.{locale}.description', types.StringType),
+
+        'isAvailableWorldwide': (True, 'publishingInformation.isAvailableWorldwide', types.BooleanType),
+        'testingInstructions': (True, 'publishingInformation.testingInstructions', types.StringType),
+        'category': (True, 'publishingInformation.category', types.StringType),
+        'distributionCountries': (True, 'publishingInformation.distributionCountries', types.ListType),
+
+        # apis
+        'endpointUri': (True, 'apis.custom.endpoint.uri', types.StringType),
+        # 'endpointCertType': (True, 'apis.custom.endpoint.sslCertificateType', types.StringType),
+        'interfaces': (True, 'apis.custom.interfaces', types.ListType),
+
+        'endpointRegionUri': (True, 'apis.custom.regions.{region}.endpoint.uri', types.StringType),
+        'endpointRegionCertType': (True, 'apis.custom.regions.{region}.endpoint.sslCertificateType', types.StringType),
+
+        # base
+        'manifestVersion': (False, 'manifestVersion', types.StringType),
+        "permissions": (True, 'permissions', types.ListType), # dict with naem .. lets see
+
+        # privacy
+        'allowsPurchases': (True, 'privacyAndCompliance.allowsPurchases', types.BooleanType),
+        'usesPersonalInfo': (True, 'privacyAndCompliance.usesPersonalInfo', types.BooleanType),
+        'isChildDirected': (True, 'privacyAndCompliance.isChildDirected', types.BooleanType),
+        'isExportCompliant': (True, 'privacyAndCompliance.isExportCompliant', types.BooleanType),
+        'containsAds': (True, 'privacyAndCompliance.containsAds', types.BooleanType),
+        'privacyPolicyUrl': (True, 'privacyAndCompliance.locales.{locale}.privacyPolicyUrl', types.StringType),
+        'termsOfUseUrl': (True, 'privacyAndCompliance.locales.{locale}.termsOfUseUrl', types.StringType),
+
+        # events
+        'eventUri': (True, 'events.endpoint.uri', types.StringType),
+        'eventSubscriptions': (True, 'events.subscriptions', types.ListType),
+        'eventRegionUri': (True, 'events.regions.{region}.endpoint.uri', types.StringType),
+    }
+
+    def __init__(self, AlexaSkillMmgtAPI, skillId, defaultLocale=None):
         self._api = AlexaSkillMmgtAPI
         self._id = skillId
-        self._manifest = self._api.skill(self._id)
+        self._defaultLocale = defaultLocale
+        self._manifest = self._api.skillGet(self._id)
+
+    @classmethod
+    def _replacePath(cls, path, data):
+        needReplace = KWARGS_PAT.findall(path)
+        if needReplace == data.keys():
+            for key, value in data.items():
+                path = path.replace('{%s}' % key, value)
+            return path
+        else:
+            raise Exception('Need to provide %s but got %s instead.' % (needReplace, data.keys()))
+
+    @classmethod
+    def _iterPath(cls, data, path, forWrite=False):
+        if forWrite and len(path) == 1:
+            # in case of write we need to exit earlier
+            return (data, path[0])
+        elif path:
+            currentKey = path.pop(0)
+            if isinstance(data, types.DictType) and currentKey in data:
+                return cls._iterPath(data[currentKey], path)
+            elif isinstance(data, types.DictType) and forWrite in data:
+                data[currentKey] = {}
+                return cls._iterPath(data[currentKey], path)
+            else:
+                raise ValueError('Unable to find value for "%s".' % currentKey)
+        else:
+            return data
+
+    def _doIterPath(self, paramDef, forWrite, **kwargs):
+        if not paramDef:
+            raise Exception('Unable to find definition for "%s" must be one of %s' % (
+                param, self._structure.keys()
+                ))
+        path = self._replacePath(paramDef[1], kwargs).split('.')
+        value = self._iterPath(self._manifest, path)
+        return value
+
+    def getParam(self, param, **kwargs):
+        paramDef = self._structure.get(param)
+        value = self._doIterPath(paramDef, False, **kwargs)
+
+        if param in self._subdict:
+            subdictDef = self._subdict[param]
+            if isinstance(subdictDef, types.DictType):
+                if len(subdictDef) == 1:
+                    subkey, restriction = subdictDef.items()[0]
+                    return ListOverlay(subkey, value, restriction)
+
+                elif isinstance(subdictDef, types.ListType):
+                    res = []
+                    for val in value:
+                        res.append(RestrictedDict(subdictDef, value))
+                    return res
+            elif isinstance(subdictDef, types.ListType):
+                # is an enum .. we can do not much
+                pass
+            else:
+                raise Exception('Invalid definition type "%s" for %s' % (type(subdictDef, param)))
+        elif isinstance(paramDef[2], types.StringType):
+            return getattr(value, paramDef[2])()
+        return value
+
+    def setParam(self, param, value, **kwargs):
+        paramDef = self._structure.get(param)
+
+        # do some checks first
+        if paramDef[0] is False:
+            raise Exception('Param "%s" is not writeable.' % (param, ))
+        if not isinstance(value, paramDef):
+            raise Exception('Invalid type "%s" for param %s - expected %s' % (
+                type(value), param, paramDef[2]
+                ))
+        subdictDef = self._subdict.get(param)
+        if subdictDef and isinstance(subdictDef, types.ListType) and value not in subdictDef:
+            raise Exception('Param "%s" invalid value "%s" expect one of: %s' % (
+                parm, value, subdictDef
+                ))
+
+        data, key = value = self._doIterPath(param, True, **kwargs)
+        if paramDef[0] in [types.BooleanType, types.StringType, types.IntType]:
+            data[key] = value
+        elif paramDef[0] in [types.ListType]:
+            if isinstance(subdictDef, types.DictType) and len(subdictDef) == 1:
+                if isinstance(value, ListOverlay):
+                    data[key] = value._orig
+                else:
+                    akey = self._subdict[param]
+                    data[key] = [{akey: v} for v in values]
+            else:
+                data[key] = value
+
+
+
 
     def __repr__(self):
         return '<%s.%s object at %s id=%s>' % (
             self.__class__.__module__, self.__class__.__name__,
             hex(id(self)), self._id)
 
-    def manifestVersion(self):
+
+
+
+
+class AlexaSmartHomeSkill(AlexaSkill):
+
+    _structure = copy(AlexaSkill._structure)
+    _structure['endpointUri'] = (True, 'apis.smartHome.endpoint.uri', types.StringType)
+    _structure['endpointCertType'] = (True, 'apis.smartHome.endpoint.sslCertificateType', types.StringType)
+
+    _structure['endpointRegionUri'] = (True, 'apis.smartHome.regions.{region}.endpoint.uri', types.StringType)
+    _structure['endpointRegionCertType'] = (True, 'apis.smartHome.regions.{region}.endpoint.sslCertificateType', types.StringType)
+
+
+class AlexaListSkill(AlexaSkill):
+
+    _structure = copy(AlexaSkill._structure)
+    _structure['householdList'] = (True, 'apis.householdList', types.DictType)
+
+class AlexaFlashBriefingSkill(AlexaSkill):
+
+    _structure = copy(AlexaSkill._structure)
+    _structure['feed'] = (True, 'apis.flashBriefing.locales.{locale}.feeds', types.ListType)
+    _structure['errorMessage'] = (True, 'apis.flashBriefing.locales.{locale}.customErrorMessage', types.StringType)
+
+    _subdict = copy(AlexaSkill._subdict)
+    _subdict['feed'] = {
+        'updateFrequency': ['DAILY', 'HOURLY', 'WEEKLY'],
+        'genre': [
+            'HEADLINE_NEWS', 'BUSINESS', 'POLITICS', 'ENTERTAINMENT', 'TECHNOLOGY', 'HUMOR', 'LIFESTYLE', 'SPORTS',
+            'SCIENCE', 'HEALTH_AND_FITNESS', 'ARTS_AND_CULTURE', 'PRODUCTIVITY_AND_UTILITIES', 'OTHER',
+        ],
+        'contentType': ['TEXT', 'AUDIO'],
+        'name': types.StringType,
+        'isDefault': types.BooleanType,
+        'vuiPreample': types.StringType,
+        'imageUri': types.StringType,
+        'url': types.StringType,
+    }
+
+
+
+    # find a way for feed itmes:
+
+    # "apis": {
+    #   "flashBriefing": {
+    #     "locales": {
+    #       "en-US": {
+    #         "customErrorMessage": "Error message",
+    #         "feeds": [
+    #           {
+    #             "name": "feed name",
+    #             "isDefault": true,
+    #             "vuiPreamble": "In this skill",
+    #             "updateFrequency": "HOURLY",
+    #             "genre": "POLITICS",
+    #             "imageUri": "https://fburi.com",
+    #             "contentType": "TEXT",
+    #             "url": "https://feeds.sampleskill.com/feedX"
+    #           }
+    #         ]
+    #       }
+    #     }
+    #   }
+
+
+
+class AlexaVideoSkill(AlexaSkill):
+    _subdict = copy(AlexaSkill._subdict)
+    _subdict['catalogInformation'] = ['sourceId', 'type']
+
+    _structure = copy(AlexaSkill._structure)
+    _structure['catalogInformation'] = (True, 'apis.video.locales.{locale}.catalogInformation', types.ListType)
+    _structure['videoProviderTargetingNames'] = (True, 'apis.video.locales.{locale}.videoProviderTargetingNames', types.ListType)
+
+    _structure['upchannelRegionUri'] = (True, 'apis.smartHome.endpoint.uri', types.StringType)
+    _structure['upchannelRegionType'] = (True, 'apis.smartHome.endpoint.type', types.StringType)
+
