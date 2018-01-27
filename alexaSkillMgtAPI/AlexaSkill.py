@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import types
 import re
 import functools
 from copy import copy
+from pprint import pformat
+
+log = logging.getLogger('AlexaSkillMgtAPI')
+log.addHandler(logging.NullHandler())
 
 KWARGS_PAT = re.compile('\.{([a-z]+)}\.')
 
@@ -125,12 +130,6 @@ class ListOverlay(list):
     def __ne__(self, y):
         return self._orig.__lt__([{self._definition: v} for v in y])
 
-    # def __new__(self, S):
-    #     return self._orig.__new__(S)
-
-    #reduce
-    #reduce ex
-
     def __repr__(self):
         return [v[self._definition] for v in self._orig].__repr__()
 
@@ -145,7 +144,6 @@ class ListOverlay(list):
 
     def __setslice__(self, i, j, y):
         self._orig[i:j] = [{self._definition: self._doValidate(n)} for n in y]
-
 
     def __sizeof__(self):
         return self._orig.__sizeof__()
@@ -183,11 +181,6 @@ class ListOverlay(list):
 
 class RestrictedDict():
     def __init__(self, definition, *args, **kwargs):
-        """
-        definition = {
-            'keyname': type,
-        }
-        """
         self._definition = definition
         self._data = dict(*args, **kwargs)
 
@@ -198,7 +191,7 @@ class RestrictedDict():
         return self._data.setdefault(key, validConvert(value, self._definition.get(key)))
 
     def __getattr__(self, attrib):
-        # print "__getattr__ called for %s" % attrib
+        # log.debug("__getattr__ called for %s" % attrib)
         return getattr(self._data, attrib)
 
     # def __setattr__(self, attrib, value):
@@ -227,10 +220,8 @@ class RestrictedList():
         self._data.insert(index, validConvert(object, self._definition))
 
     def __getattr__(self, attrib):
-        print "__getattr__ called for %s" % attrib
+        # log.debug("__getattr__ called for %s" % attrib)
         return getattr(self._data, attrib)
-
-
 
 class Field(object):
     """ A manifest field """
@@ -239,12 +230,12 @@ class Field(object):
         self._key = key
 
     def __set__(self, obj, val):
-        # print "__set__ %s %s" % (obj, val)
+        # log.debug( "__set__ %s %s" % (obj, val))
         obj._obj.set(self._key, val, **obj._kwargs)
 
     def __get__(self, obj, objtype):
-        print "__get__ %s %s" % (obj, objtype)
-        print "Field: _key %s obj._kwargs %s" % (self._key, obj._kwargs)
+        # log.debug("__get__ %s %s" % (obj, objtype))
+        # log.debug("Field: _key %s obj._kwargs %s" % (self._key, obj._kwargs))
         return obj._obj.get(self._key, **obj._kwargs)
 
 
@@ -298,88 +289,6 @@ class AlexaSkill(object):
         },
     }
 
-    # _subdict = {
-    #     'permissions': 'name',
-    #     'eventSubscriptions': 'eventName',
-    # }
-
-
-    # locales = Field(False, 'publishingInformation.locales', 'keys')
-    # isAvailableWorldwide = Field(True, 'publishingInformation.isAvailableWorldwide', types.BooleanType)
-    # testingInstructions = Field(True, 'publishingInformation.testingInstructions', types.StringType)
-    # category = Field(True, 'publishingInformation.category', types.StringType, [
-    #     'ALARMS_AND_CLOCKS', 'ASTROLOGY', 'BUSINESS_AND_FINANCE', 'CALCULATORS', 'CALENDARS_AND_REMINDERS',
-    #     'CHILDRENS_EDUCATION_AND_REFERENCE', 'CHILDRENS_GAMES', 'CHILDRENS_MUSIC_AND_AUDIO',
-    #     'CHILDRENS_NOVELTY_AND_HUMOR', 'COMMUNICATION', 'CONNECTED_CAR', 'COOKING_AND_RECIPE',
-    #     'CURRENCY_GUIDES_AND_CONVERTERS', 'DATING', 'DELIVERY_AND_TAKEOUT', 'DEVICE_TRACKING',
-    #     'EDUCATION_AND_REFERENCE', 'EVENT_FINDERS', 'EXERCISE_AND_WORKOUT', 'FASHION_AND_STYLE', 'FLIGHT_FINDERS',
-    #     'FRIENDS_AND_FAMILY', 'GAME_INFO_AND_ACCESSORY', 'GAMES', 'HEALTH_AND_FITNESS', 'HOTEL_FINDERS',
-    #     'KNOWLEDGE_AND_TRIVIA', 'MOVIE_AND_TV_KNOWLEDGE_AND_TRIVIA', 'MOVIE_INFO_AND_REVIEWS', 'MOVIE_SHOWTIMES',
-    #     'MUSIC_AND_AUDIO_ACCESSORIES', 'MUSIC_AND_AUDIO_KNOWLEDGE_AND_TRIVIA',
-    #     'MUSIC_INFO_REVIEWS_AND_RECOGNITION_SERVICE', 'NAVIGATION_AND_TRIP_PLANNER', 'NEWS', 'NOVELTY',
-    #     'ORGANIZERS_AND_ASSISTANTS', 'PETS_AND_ANIMAL', 'PODCAST', 'PUBLIC_TRANSPORTATION',
-    #     'RELIGION_AND_SPIRITUALITY', 'RESTAURANT_BOOKING_INFO_AND_REVIEW', 'SCHOOLS', 'SCORE_KEEPING',
-    #     'SELF_IMPROVEMENT', 'SHOPPING', 'SMART_HOME', 'SOCIAL_NETWORKING', 'SPORTS_GAMES', 'SPORTS_NEWS',
-    #     'STREAMING_SERVICE', 'TAXI_AND_RIDESHARING', 'TO_DO_LISTS_AND_NOTES', 'TRANSLATORS', 'TV_GUIDES',
-    #     'UNIT_CONVERTERS', 'WEATHER', 'WINE_AND_BEVERAGE', 'ZIP_CODE_LOOKUP',
-    # ])
-    # distributionCountries = Field(True, 'publishingInformation.distributionCountries', types.ListType)
-
-    # class locale(ParamField):
-    #     summary = Field(True, 'publishingInformation.locales.{locale}.summary', types.StringType)
-    #     examplePhrases = Field(True, 'publishingInformation.locales.{locale}.examplePhrases', types.ListType)
-    #     keywords = Field(True, 'publishingInformation.locales.{locale}.keywords', types.ListType)
-    #     name = Field(True, 'publishingInformation.locales.{locale}.name', types.StringType)
-    #     smallIconUri = Field(True, 'publishingInformation.locales.{locale}.smallIconUri', types.StringType)
-    #     largeIconUri = Field(True, 'publishingInformation.locales.{locale}.largeIconUri', types.StringType)
-    #     description = Field(True, 'publishingInformation.locales.{locale}.description', types.StringType)
-    #     # privacy
-    #     privacyPolicyUrl = Field(True, 'privacyAndCompliance.locales.{locale}.privacyPolicyUrl', types.StringType)
-    #     termsOfUseUrl = Field(True, 'privacyAndCompliance.locales.{locale}.termsOfUseUrl', types.StringType)
-
-
-    # #  api
-    # endpointUri = Field(True, 'apis.custom.endpoint.uri', types.StringType)
-    # endpointCertType = Field(True, 'apis.custom.endpoint.sslCertificateType', types.StringType)
-    # interfaces = Field(True, 'apis.custom.interfaces', types.ListType, [
-    #     'AUDIO_PLAYER', 'VIDEO_APP', 'RENDER_TEMPLATE',
-    # ])
-
-    # endpointRegions = Field(False, 'apis.custom.regions', 'keys')
-    # eventRegions = Field(False, 'events.regions', 'keys')
-    # class region(ParamField):
-    #     endpointRegionUri = Field(True, 'apis.custom.regions.{region}.endpoint.uri', types.StringType)
-    #     endpointRegionCertType = Field(True, 'apis.custom.regions.{region}.endpoint.sslCertificateType', types.StringType)
-    #     eventRegionUri = Field(True, 'events.regions.{region}.endpoint.uri', types.StringType)
-
-    # manifestVersion = Field(False, 'manifestVersion', types.StringType)
-    # permissions = Field(True, 'permissions', types.ListType, {
-    #     'name': [
-    #         "alexa::devices:all:address:full:read",
-    #         "alexa:devices:all:address:country_and_postal_code:read",
-    #         "alexa::household:lists:read",
-    #         "alexa::household:lists:write",
-    #     ],
-    # })
-
-    # # privacy
-    # allowsPurchases = Field(True, 'privacyAndCompliance.allowsPurchases', types.BooleanType)
-    # usesPersonalInfo = Field(True, 'privacyAndCompliance.usesPersonalInfo', types.BooleanType)
-    # isChildDirected = Field(True, 'privacyAndCompliance.isChildDirected', types.BooleanType)
-    # isExportCompliant = Field(True, 'privacyAndCompliance.isExportCompliant', types.BooleanType)
-    # containsAds = Field(True, 'privacyAndCompliance.containsAds', types.BooleanType)
-
-    # # event
-    # eventUri =  Field(True, 'events.endpoint.uri', types.StringType)
-    # eventSubscriptions = Field(True, 'events.subscriptions', types.ListType, {
-    #     'eventName': [
-    #         "SKILL_ENABLED", "SKILL_DISABLED",
-    #         "SKILL_PERMISSION_ACCEPTED", "SKILL_PERMISSION_CHANGED",
-    #         "SKILL_ACCOUNT_LINKED",
-    #         "ITEMS_CREATED", "ITEMS_UPDATED","ITEMS_DELETED",
-    #     ]
-    # })
-
     _structure = {
         # publishing information
         'locales': (False, 'publishingInformation.locales', 'keys'),
@@ -431,6 +340,7 @@ class AlexaSkill(object):
     def __init__(self, AlexaSkillMmgtAPI, skillId, manifest=None, defaultLocale=None):
         self._obj = self
         self._kwargs = {}
+        self._model = {}
 
         self._api = AlexaSkillMmgtAPI
         self._id = skillId
@@ -458,6 +368,12 @@ class AlexaSkill(object):
         if not manifest:
             manifest = self._api.skillGet(self._id)
         self._manifest = manifest
+        for locale in self.get('locales'):
+            self._model[locale] = None
+            try:
+                self._model[locale] = self._api.modelGet(self._id, locale)
+            except Exception, e:
+                log.warning("Could not load modell for language %s" % (locale))
 
     @classmethod
     def _replacePath(cls, path, data):
@@ -496,7 +412,7 @@ class AlexaSkill(object):
         return value
 
     def get(self, param, **kwargs):
-        print "get(%s, %s)" % (param, kwargs)
+        log.debug("get(%s, %s)" % (param, kwargs))
         paramDef = self._structure.get(param)
         value = self._doIterPath(paramDef, False, **kwargs)
 
@@ -522,6 +438,7 @@ class AlexaSkill(object):
         return value
 
     def set(self, param, value, **kwargs):
+        log.debug("get(%s, %s, %s)" % (param, value, kwargs))
         paramDef = self._structure.get(param)
 
         # do some checks first
@@ -550,14 +467,10 @@ class AlexaSkill(object):
             else:
                 data[key] = value
 
-
     def __repr__(self):
-        return '<%s.%s object at %s id=%s>' % (
+        return '<%s.%s object at %s id=%s models=%s>' % (
             self.__class__.__module__, self.__class__.__name__,
-            hex(id(self)), self._id)
-
-
-
+            hex(id(self)), pformat(self._id), self._model.keys())
 
 
 class AlexaSmartHomeSkill(AlexaSkill):
@@ -595,33 +508,6 @@ class AlexaFlashBriefingSkill(AlexaSkill):
         'imageUri': types.StringType,
         'url': types.StringType,
     }
-
-
-
-    # find a way for feed itmes:
-
-    # "apis": {
-    #   "flashBriefing": {
-    #     "locales": {
-    #       "en-US": {
-    #         "customErrorMessage": "Error message",
-    #         "feeds": [
-    #           {
-    #             "name": "feed name",
-    #             "isDefault": true,
-    #             "vuiPreamble": "In this skill",
-    #             "updateFrequency": "HOURLY",
-    #             "genre": "POLITICS",
-    #             "imageUri": "https://fburi.com",
-    #             "contentType": "TEXT",
-    #             "url": "https://feeds.sampleskill.com/feedX"
-    #           }
-    #         ]
-    #       }
-    #     }
-    #   }
-
-
 
 class AlexaVideoSkill(AlexaSkill):
 
@@ -680,6 +566,8 @@ if __name__ == '__main__':
     from settings import Settings
     from AlexaSkillMgtAPI import AlexaSkillMgtAPI
 
+    logging.basicConfig(level=logging.DEBUG)
+
     if len(sys.argv) < 2:
         print "usage: %s CONFIGFILE [SKILLID]" % (sys.argv[0], )
         sys.exit(0)
@@ -704,4 +592,5 @@ if __name__ == '__main__':
     # print "Skill.manifestVersion: %s" % dir(skill.manifestVersion)
     print "Skill.locale_de_DE: %s" % dir(skill.locale_de_DE)
     print "Skill.locale_de_DE.name: %s" % skill.locale_de_DE.name
+    print "Skill._model['de-DE']: %s" % pformat(skill._model.get('de-DE'))
 
