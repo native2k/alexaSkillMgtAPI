@@ -7,7 +7,7 @@ from pprint import pformat
 import time
 
 
-class AlexaSkillMmgtAPI(object):
+class AlexaSkillMgtAPI(object):
     """Class to communicate with the Alexa Skill Management API
 
     Attributes:
@@ -350,7 +350,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     settings = Settings(sys.argv[1])
-    api = AlexaSkillMmgtAPI(settings.accessToken)
+    api = AlexaSkillMgtAPI(settings.accessToken)
 
     vendors = api.vendorList()
     print "Result vendorList: %s" % vendors

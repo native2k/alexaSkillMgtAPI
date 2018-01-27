@@ -3,6 +3,7 @@
 
 import types
 import re
+import functools
 from copy import copy
 
 KWARGS_PAT = re.compile('\.{([a-z]+)}\.')
@@ -24,6 +25,7 @@ def validConvert(value, adef):
         raise ValueError('Value "%s" is type %s but must be %s' % (
             value, type(value), adef))
     return value
+
 
 class ListOverlay(list):
 
@@ -203,6 +205,7 @@ class RestrictedDict():
     #     if attrib not in ['_definition', 'self._data']
     #     return setattr(self._data, attrib, value)
 
+
 class RestrictedList():
     def __init__(self, definition, *args, **kwargs):
         self._definition = definition
@@ -228,12 +231,9 @@ class RestrictedList():
         return getattr(self._data, attrib)
 
 
-
-
 class AlexaSkill(object):
     """
     """
-
     _subdict = {
         'category': [
             'ALARMS_AND_CLOCKS', 'ASTROLOGY', 'BUSINESS_AND_FINANCE', 'CALCULATORS', 'CALENDARS_AND_REMINDERS',
@@ -297,7 +297,7 @@ class AlexaSkill(object):
         'endpointUri': (True, 'apis.custom.endpoint.uri', types.StringType),
         # 'endpointCertType': (True, 'apis.custom.endpoint.sslCertificateType', types.StringType),
         'interfaces': (True, 'apis.custom.interfaces', types.ListType),
-
+        'endpointRegions': (False, 'apis.custom.regions', 'keys'),
         'endpointRegionUri': (True, 'apis.custom.regions.{region}.endpoint.uri', types.StringType),
         'endpointRegionCertType': (True, 'apis.custom.regions.{region}.endpoint.sslCertificateType', types.StringType),
 
@@ -317,13 +317,58 @@ class AlexaSkill(object):
         # events
         'eventUri': (True, 'events.endpoint.uri', types.StringType),
         'eventSubscriptions': (True, 'events.subscriptions', types.ListType),
+        'eventRegions': (False, 'events.regions', 'keys'),
         'eventRegionUri': (True, 'events.regions.{region}.endpoint.uri', types.StringType),
+    }
+    _subclass = {
+        'locale': ['locales'],
+        'region': ['endpointRegions', 'eventRegions'],
     }
 
     def __init__(self, AlexaSkillMmgtAPI, skillId, defaultLocale=None):
         self._api = AlexaSkillMmgtAPI
         self._id = skillId
         self._defaultLocale = defaultLocale
+        self._loadData()
+        self._populateClass()
+
+    def _populateClass(self):
+        class Dummy:
+            def __init__(self, id):
+                self.id = id
+
+        for attrib, attribDef in self._structure.items():
+            sub = KWARGS_PAT.findall(attribDef[1])
+            if sub:
+                targets = []
+                sublcass = []
+                for i in self._subclass[sub[0]]:
+                    try:
+                        sublcass.extend(self.get(i))
+                    except:
+                        pass
+
+                for asub in set(sublcass):
+                    if not hasattr(self, asub):
+                        setattr(self, asub, Dummy(asub))
+                    targets.append(
+                        (getattr(self, asub), {sub[0]:asub})
+                    )
+            else:
+                targets = [(self, {})]
+
+            for target in targets:
+                # if self.get(attrib, **target[1]):
+                    funcs = [functools.partial(self.get, attrib, **target[1])]
+                    if attribDef[0]:
+                        funcs.append(functools.partial(self.set, attrib, **target[1]))
+                    else:
+                        funcs.append(None)
+                    funcs.extend([None, 'parameter %s' % attrib])
+                    setattr(target[0], attrib, property(*funcs))
+
+
+    def _loadData(self):
         self._manifest = self._api.skillGet(self._id)
 
     @classmethod
@@ -362,7 +407,7 @@ class AlexaSkill(object):
         value = self._iterPath(self._manifest, path)
         return value
 
-    def getParam(self, param, **kwargs):
+    def get(self, param, **kwargs):
         paramDef = self._structure.get(param)
         value = self._doIterPath(paramDef, False, **kwargs)
 
@@ -387,7 +432,7 @@ class AlexaSkill(object):
             return getattr(value, paramDef[2])()
         return value
 
-    def setParam(self, param, value, **kwargs):
+    def set(self, param, value, **kwargs):
         paramDef = self._structure.get(param)
 
         # do some checks first
@@ -415,8 +460,6 @@ class AlexaSkill(object):
                     data[key] = [{akey: v} for v in values]
             else:
                 data[key] = value
-
-
 
 
     def __repr__(self):
@@ -501,4 +544,91 @@ class AlexaVideoSkill(AlexaSkill):
 
     _structure['upchannelRegionUri'] = (True, 'apis.smartHome.endpoint.uri', types.StringType)
     _structure['upchannelRegionType'] = (True, 'apis.smartHome.endpoint.type', types.StringType)
+
+if __name__ == '__main__':
+    import sys
+    from settings import Settings
+    from AlexaSkillMgtAPI import AlexaSkillMgtAPI
+
+    if len(sys.argv) < 2:
+        print "usage: %s CONFIGFILE [SKILLID]" % (sys.argv[0], )
+        sys.exit(0)
+
+    settings = Settings(sys.argv[1])
+    api = AlexaSkillMgtAPI(settings.accessToken)
+
+    if len(sys.argv) > 2:
+        skillID = sys.argv[2]
+    else:
+        vendors = api.vendorList()
+        vendorID = vendors.keys()[0]
+        skills = api.skillList(vendorID)
+        skillID = skills.values()[0]['skillId']
+
+    skill = AlexaSkill(api, skillID)
+    print "Skill: %s" % skill
+    for value in ['manifestVersion', 'allowsPurchases', 'permissions']:
+        print "Skill-%s: %s" % (value, skill.get(value))
+    # print "Skill: %s" % dir(skill)
+    # print "Skill.manifestVersion: %s" % skill.manifestVersion
+    # print "Skill.manifestVersion: %s" % dir(skill.manifestVersion)
+    class Test(object):
+        val = {}
+
+        class VarProxy(object):
+                def __init__(self, data, key):
+                    self._data = data
+                    self._key = key
+
+                def __set__(self, obj, val):
+                    print "__set__ %s %s" % (obj, val)
+                    # self._data[self._key] = val
+                    obj.setval(self._key, val)
+
+                def __get__(self, obj, objtype):
+                    print "__get__ %s %s" % (obj, objtype)
+                    # return self._data.get(self._key)
+                    return obj.getval(self._key)
+
+        def setval(self, param, value):
+            print "setval: %s %s %s" % (self, param, value)
+            self.val[param] = value
+
+        def getval(self, param, arg2=None):
+            print "getval self: %s param: %s arg2: %s" % (self, param, arg2)
+            return self.val.get(param, '-')
+
+        def delval(self, param):
+            print "delval self: %s param: %s arg2: %s" % (self, param, arg2)
+            del(self.val) #.get(param, '-')
+
+        # def __setattr__(self, param, val):
+        #     print "> setattr > %s" % param
+        #     if param == 'test1':
+        #         return functool.partial(self.setval, 'test1', val)
+        #     else:
+        #        raise AttributeError('%s.%s has no member %s' % (
+        #         self.__class__.__module__, self.__class__.__name__, param))
+
+
+        def __init__(self):
+            pass
+
+        test1 = VarProxy(val, 'test1')
+
+
+    test = Test()
+    print dir(test)
+    print 'test.val ', test.val
+    print 'test.test1 ', test.test1
+    test.test1 = 'blub'
+    # test.set_test1('foor')
+    print 'test.test1 ', test.test1
+    print 'test.val ', test.val
+    # print 'test.bar ', test.bar
+    # print 'test.bar ', test.bar
+    # print 'test.bar ', test.bar
+
+
+
 
