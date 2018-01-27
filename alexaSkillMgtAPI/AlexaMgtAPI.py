@@ -2,12 +2,15 @@
 # -*- coding: utf-8 -*-
 """Summary
 """
+import logging
 import requests
 from pprint import pformat
 import time
 
+log = logging.getLogger('AlexaSkillMgtAPI')
+log.addHandler(logging.NullHandler())
 
-class AlexaSkillMgtAPI(object):
+class AlexaMgtAPI(object):
     """Class to communicate with the Alexa Skill Management API
 
     Attributes:
@@ -167,7 +170,7 @@ class AlexaSkillMgtAPI(object):
                     operation, self._operations.keys()))
 
         url = self._replace(op['url'], kwargs)
-        # print "request: %s -> %s (%s)" % (url, data, self._getHeaders())
+        # log.debug("request: %s -> %s (%s)" % (url, data, self._getHeaders()))
         res = requests.request(
             method=op['method'],
             url=url,
@@ -180,7 +183,7 @@ class AlexaSkillMgtAPI(object):
             self._errorCodes.get(res.status_code, self._errorCodes[None])
         )
         if res.status_code not in [200, 202, 204]:
-            print "%s - %s" % (statusDesc, res.text)
+            log.debug("%s - %s" % (statusDesc, res.text))
             try:
                 msg = res.json().get('message') or res.text
             except Exception:
@@ -245,7 +248,7 @@ class AlexaSkillMgtAPI(object):
             for askill in res['json']['skills']:
                 skillKey = "_".join([askill['skillId'], askill['stage']])
                 if skillKey in results:
-                    print "Double skillid for: \n%s\n%s" % (results[skillKey], askill)
+                    log.warning("Double skillid for: \n%s\n%s" % (results[skillKey], askill))
                 results[skillKey] = askill
             # need to request more?
             # res = self._doRequest('skillListNext', maxResults='50', vendorId=vendorId, token=?)
@@ -268,7 +271,7 @@ class AlexaSkillMgtAPI(object):
         res = self._doRequest('modelGet', skillId=skillId, locale=locale)
         # What is this etag for?
         # tag = self._doRequest('modelGetTag', skillId=skillId, locale=locale)
-        # print pformat(tag)
+        # log.debug(pformat(tag))
         if res['status'] == 200:
             return res['json']['interactionModel']['languageModel']
         else:
@@ -332,8 +335,6 @@ class AlexaSkillMgtAPI(object):
         else:
             raise Exception(res['statusDesc'])
 
-
-
     def __repr__(self):
         return '<%s.%s object at %s accessToken=%s>' % (
             self.__class__.__module__, self.__class__.__name__,
@@ -345,12 +346,14 @@ if __name__ == '__main__':
     from copy import copy
     from settings import Settings
 
+    logging.basicConfig(level=logging.DEBUG)
+
     if len(sys.argv) < 2:
         print "usage: %s CONFIGFILE [SKILLID]" % (sys.argv[0], )
         sys.exit(0)
 
     settings = Settings(sys.argv[1])
-    api = AlexaSkillMgtAPI(settings.accessToken)
+    api = AlexaMgtAPI(settings.accessToken)
 
     vendors = api.vendorList()
     print "Result vendorList: %s" % vendors

@@ -10,711 +10,547 @@ Tests for `alexaSkill` module.
 import pytest
 import types
 from pprint import pformat
-from alexaSkillMgtAPI.AlexaSkill import AlexaSKillFactory, AlexaSkill, ListOverlay, RestrictedDict, RestrictedList
+from alexaSkillMgtAPI.AlexaSkill import AlexaSKillFactory
 
 
-# base one
-TESTDATA = [{
-      "skillManifest": {
-        "publishingInformation": {
-          "locales": {
-            "en-US": {
-              "summary": "This is a sample Alexa custom skill.",
-              "examplePhrases": [
-                "Alexa, open sample custom skill.",
-                "Alexa, play sample custom skill."
-              ],
-              "keywords": [
-                "Descriptive_Phrase_1",
-                "Descriptive_Phrase_2",
-                "Descriptive_Phrase_3"
-              ],
-              "smallIconUri": "https://smallUri.com",
-              "largeIconUri": "https://largeUri.com",
-              "name": "Sample custom skill name.",
-              "description": "This skill does interesting things."
-            }
-          },
-          "isAvailableWorldwide": False,
-          "testingInstructions": "1) Say 'Alexa, hello world'",
-          "category": "HEALTH_AND_FITNESS",
-          "distributionCountries": [
-            "US",
-            "GB",
-            "DE"
-          ]
-        },
-        "apis": {
-          "custom": {
-            "endpoint": {
-              "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+@pytest.fixture
+def testdata():
+    return [{
+          "skillManifest": {
+            "publishingInformation": {
+              "locales": {
+                "en-US": {
+                  "summary": "This is a sample Alexa custom skill.",
+                  "examplePhrases": [
+                    "Alexa, open sample custom skill.",
+                    "Alexa, play sample custom skill."
+                  ],
+                  "keywords": [
+                    "Descriptive_Phrase_1",
+                    "Descriptive_Phrase_2",
+                    "Descriptive_Phrase_3"
+                  ],
+                  "smallIconUri": "https://smallUri.com",
+                  "largeIconUri": "https://largeUri.com",
+                  "name": "Sample custom skill name.",
+                  "description": "This skill does interesting things."
+                }
+              },
+              "isAvailableWorldwide": False,
+              "testingInstructions": "1) Say 'Alexa, hello world'",
+              "category": "HEALTH_AND_FITNESS",
+              "distributionCountries": [
+                "US",
+                "GB",
+                "DE"
+              ]
             },
-            "regions": {
-              "NA": {
+            "apis": {
+              "custom": {
                 "endpoint": {
-                  "sslCertificateType": "Trusted",
-                  "uri": "https://customapi.sampleskill.com"
+                  "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+                },
+                "regions": {
+                  "NA": {
+                    "endpoint": {
+                      "sslCertificateType": "Trusted",
+                      "uri": "https://customapi.sampleskill.com"
+                    }
+                  }
+                }
+              }
+            },
+            "manifestVersion": "1.0",
+            "permissions": [
+              {
+                "name": "alexa::devices:all:address:full:read"
+              },
+              {
+                "name": "alexa:devices:all:address:country_and_postal_code:read"
+              },
+              {
+                "name": "alexa::household:lists:read"
+              },
+              {
+                "name": "alexa::household:lists:write"
+              }
+            ],
+            "privacyAndCompliance": {
+              "allowsPurchases": False,
+              "usesPersonalInfo": False,
+              "isChildDirected": False,
+              "isExportCompliant": True,
+              "containsAds": False,
+              "locales": {
+                "en-US": {
+                  "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com",
+                  "termsOfUseUrl": "http://www.termsofuse.sampleskill.com"
+                }
+              }
+            },
+            "events": {
+              "endpoint": {
+                "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+              },
+              "subscriptions": [
+                {
+                  "eventName": "SKILL_ENABLED"
+                },
+                {
+                  "eventName": "SKILL_DISABLED"
+                },
+                {
+                  "eventName": "SKILL_PERMISSION_ACCEPTED"
+                },
+                {
+                  "eventName": "SKILL_PERMISSION_CHANGED"
+                },
+                {
+                  "eventName": "SKILL_ACCOUNT_LINKED"
+                }
+              ],
+              "regions": {
+                "NA": {
+                  "endpoint": {
+                    "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+                  }
                 }
               }
             }
           }
         },
-        "manifestVersion": "1.0",
-        "permissions": [
-          {
-            "name": "alexa::devices:all:address:full:read"
-          },
-          {
-            "name": "alexa:devices:all:address:country_and_postal_code:read"
-          },
-          {
-            "name": "alexa::household:lists:read"
-          },
-          {
-            "name": "alexa::household:lists:write"
-          }
-        ],
-        "privacyAndCompliance": {
-          "allowsPurchases": False,
-          "usesPersonalInfo": False,
-          "isChildDirected": False,
-          "isExportCompliant": True,
-          "containsAds": False,
-          "locales": {
-            "en-US": {
-              "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com",
-              "termsOfUseUrl": "http://www.termsofuse.sampleskill.com"
-            }
-          }
-        },
-        "events": {
-          "endpoint": {
-            "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-          },
-          "subscriptions": [
-            {
-              "eventName": "SKILL_ENABLED"
-            },
-            {
-              "eventName": "SKILL_DISABLED"
-            },
-            {
-              "eventName": "SKILL_PERMISSION_ACCEPTED"
-            },
-            {
-              "eventName": "SKILL_PERMISSION_CHANGED"
-            },
-            {
-              "eventName": "SKILL_ACCOUNT_LINKED"
-            }
-          ],
-          "regions": {
-            "NA": {
-              "endpoint": {
-                "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-              }
-            }
-          }
-        }
-      }
-    },
 
 
-    # # smarthome
-    # {
-    #   "skillManifest": {
-    #     "manifestVersion": "1.0",
-    #     "publishingInformation": {
-    #       "locales": {
-    #         "en-US": {
-    #           "name": "Sample skill name.",
-    #           "summary": "This is a sample Alexa skill.",
-    #           "description": "This skill has basic and advanced smart devices control features.",
-    #           "smallIconUri": "https://smallUri.com",
-    #           "largeIconUri": "https://largeUri.com",
-    #           "examplePhrases": [
-    #             "Alexa, open sample skill.",
-    #             "Alexa, blink kitchen lights."
-    #           ],
-    #           "keywords": [
-    #             "Smart Home",
-    #             "Lights",
-    #             "Smart Devices"
-    #           ]
-    #         }
-    #       },
-    #       "distributionCountries": [
-    #         "US",
-    #         "GB",
-    #         "DE"
-    #       ],
-    #       "isAvailableWorldwide": False,
-    #       "testingInstructions": "1) Say 'Alexa, turn on sample lights'",
-    #       "category": "SMART_HOME"
-    #     },
-    #     "privacyAndCompliance": {
-    #       "allowsPurchases": False,
-    #       "usesPersonalInfo": False,
-    #       "isChildDirected": False,
-    #       "isExportCompliant": True,
-    #       "containsAds": False,
-    #       "locales": {
-    #         "en-US": {
-    #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com",
-    #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com"
-    #         }
-    #       }
-    #     },
-    #     "apis": {
-    #       "smartHome": {
-    #         "endpoint": {
-    #           "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-    #         },
-    #         "regions": {
-    #           "NA": {
-    #             "endpoint": {
-    #               "uri": "arn:aws:lambda:us-west-2:010623927470:function:sampleSkillWest"
-    #             }
-    #           }
-    #         }
-    #       }
-    #     }
-    #   }
-    # },
+        # # smarthome
+        # {
+        #   "skillManifest": {
+        #     "manifestVersion": "1.0",
+        #     "publishingInformation": {
+        #       "locales": {
+        #         "en-US": {
+        #           "name": "Sample skill name.",
+        #           "summary": "This is a sample Alexa skill.",
+        #           "description": "This skill has basic and advanced smart devices control features.",
+        #           "smallIconUri": "https://smallUri.com",
+        #           "largeIconUri": "https://largeUri.com",
+        #           "examplePhrases": [
+        #             "Alexa, open sample skill.",
+        #             "Alexa, blink kitchen lights."
+        #           ],
+        #           "keywords": [
+        #             "Smart Home",
+        #             "Lights",
+        #             "Smart Devices"
+        #           ]
+        #         }
+        #       },
+        #       "distributionCountries": [
+        #         "US",
+        #         "GB",
+        #         "DE"
+        #       ],
+        #       "isAvailableWorldwide": False,
+        #       "testingInstructions": "1) Say 'Alexa, turn on sample lights'",
+        #       "category": "SMART_HOME"
+        #     },
+        #     "privacyAndCompliance": {
+        #       "allowsPurchases": False,
+        #       "usesPersonalInfo": False,
+        #       "isChildDirected": False,
+        #       "isExportCompliant": True,
+        #       "containsAds": False,
+        #       "locales": {
+        #         "en-US": {
+        #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com",
+        #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com"
+        #         }
+        #       }
+        #     },
+        #     "apis": {
+        #       "smartHome": {
+        #         "endpoint": {
+        #           "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+        #         },
+        #         "regions": {
+        #           "NA": {
+        #             "endpoint": {
+        #               "uri": "arn:aws:lambda:us-west-2:010623927470:function:sampleSkillWest"
+        #             }
+        #           }
+        #         }
+        #       }
+        #     }
+        #   }
+        # },
 
-    # #List Skill Manifest With Custom Component
-    # {
-    #   "skillManifest": {
-    #     "publishingInformation": {
-    #       "locales": {
-    #         "en-US": {
-    #           "summary": "This is a sample Alexa skill.",
-    #           "examplePhrases": [
-    #             "Alexa, open sample skill.",
-    #             "Alexa, play sample skill."
-    #           ],
-    #           "keywords": [
-    #             "Descriptive_Phrase_1",
-    #             "Descriptive_Phrase_2",
-    #             "Descriptive_Phrase_3"
-    #           ],
-    #           "smallIconUri": "https://smallUri.com",
-    #           "largeIconUri": "https://largeUri.com",
-    #           "name": "Sample skill name.",
-    #           "description": "This skill does interesting things."
-    #         }
-    #       },
-    #       "isAvailableWorldwide": False,
-    #       "testingInstructions": "1) Say 'Alexa, hello world'",
-    #       "category": "HEALTH_AND_FITNESS",
-    #       "distributionCountries": [
-    #         "US",
-    #         "GB",
-    #         "DE"
-    #       ]
-    #     },
-    #     "apis": {
-    #       "custom": {
-    #         "endpoint": {
-    #           "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-    #         },
-    #         "regions": {
-    #           "NA": {
-    #             "endpoint": {
-    #               "sslCertificateType": "Trusted",
-    #               "uri": "https://customapi.sampleskill.com"
-    #             }
-    #           }
-    #         }
-    #       },
-    #       "householdList": {}
-    #     },
-    #     "manifestVersion": "1.0",
-    #     "permissions": [
-    #       {
-    #         "name": "alexa::devices:all:address:full:read"
-    #       },
-    #       {
-    #         "name": "alexa:devices:all:address:country_and_postal_code:read"
-    #       },
-    #       {
-    #         "name": "alexa::household:lists:read"
-    #       },
-    #       {
-    #         "name": "alexa::household:lists:write"
-    #       }
-    #     ],
-    #     "privacyAndCompliance": {
-    #       "allowsPurchases": False,
-    #       "locales": {
-    #         "en-US": {
-    #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com",
-    #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com"
-    #         }
-    #       },
-    #       "isExportCompliant": True,
-    #       "containsAds": False,
-    #       "isChildDirected": False,
-    #       "usesPersonalInfo": False
-    #     },
-    #     "events": {
-    #       "endpoint": {
-    #         "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-    #       },
-    #       "subscriptions": [
-    #         {
-    #           "eventName": "SKILL_ENABLED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_DISABLED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_PERMISSION_ACCEPTED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_PERMISSION_CHANGED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_ACCOUNT_LINKED"
-    #         },
-    #         {
-    #           "eventName": "ITEMS_CREATED"
-    #         },
-    #         {
-    #           "eventName": "ITEMS_UPDATED"
-    #         },
-    #         {
-    #           "eventName": "ITEMS_DELETED"
-    #         }
-    #       ],
-    #       "regions": {
-    #         "NA": {
-    #           "endpoint": {
-    #             "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-    #           }
-    #         }
-    #       }
-    #     }
-    #   }
-    # },
+        # #List Skill Manifest With Custom Component
+        # {
+        #   "skillManifest": {
+        #     "publishingInformation": {
+        #       "locales": {
+        #         "en-US": {
+        #           "summary": "This is a sample Alexa skill.",
+        #           "examplePhrases": [
+        #             "Alexa, open sample skill.",
+        #             "Alexa, play sample skill."
+        #           ],
+        #           "keywords": [
+        #             "Descriptive_Phrase_1",
+        #             "Descriptive_Phrase_2",
+        #             "Descriptive_Phrase_3"
+        #           ],
+        #           "smallIconUri": "https://smallUri.com",
+        #           "largeIconUri": "https://largeUri.com",
+        #           "name": "Sample skill name.",
+        #           "description": "This skill does interesting things."
+        #         }
+        #       },
+        #       "isAvailableWorldwide": False,
+        #       "testingInstructions": "1) Say 'Alexa, hello world'",
+        #       "category": "HEALTH_AND_FITNESS",
+        #       "distributionCountries": [
+        #         "US",
+        #         "GB",
+        #         "DE"
+        #       ]
+        #     },
+        #     "apis": {
+        #       "custom": {
+        #         "endpoint": {
+        #           "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+        #         },
+        #         "regions": {
+        #           "NA": {
+        #             "endpoint": {
+        #               "sslCertificateType": "Trusted",
+        #               "uri": "https://customapi.sampleskill.com"
+        #             }
+        #           }
+        #         }
+        #       },
+        #       "householdList": {}
+        #     },
+        #     "manifestVersion": "1.0",
+        #     "permissions": [
+        #       {
+        #         "name": "alexa::devices:all:address:full:read"
+        #       },
+        #       {
+        #         "name": "alexa:devices:all:address:country_and_postal_code:read"
+        #       },
+        #       {
+        #         "name": "alexa::household:lists:read"
+        #       },
+        #       {
+        #         "name": "alexa::household:lists:write"
+        #       }
+        #     ],
+        #     "privacyAndCompliance": {
+        #       "allowsPurchases": False,
+        #       "locales": {
+        #         "en-US": {
+        #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com",
+        #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com"
+        #         }
+        #       },
+        #       "isExportCompliant": True,
+        #       "containsAds": False,
+        #       "isChildDirected": False,
+        #       "usesPersonalInfo": False
+        #     },
+        #     "events": {
+        #       "endpoint": {
+        #         "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+        #       },
+        #       "subscriptions": [
+        #         {
+        #           "eventName": "SKILL_ENABLED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_DISABLED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_PERMISSION_ACCEPTED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_PERMISSION_CHANGED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_ACCOUNT_LINKED"
+        #         },
+        #         {
+        #           "eventName": "ITEMS_CREATED"
+        #         },
+        #         {
+        #           "eventName": "ITEMS_UPDATED"
+        #         },
+        #         {
+        #           "eventName": "ITEMS_DELETED"
+        #         }
+        #       ],
+        #       "regions": {
+        #         "NA": {
+        #           "endpoint": {
+        #             "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+        #           }
+        #         }
+        #       }
+        #     }
+        #   }
+        # },
 
-    # # List Skill Manifest With No Custom Component
-    # {
-    #   "skillManifest": {
-    #     "publishingInformation": {
-    #       "locales": {
-    #         "en-US": {
-    #           "summary": "This is a sample Alexa skill.",
-    #           "examplePhrases": [
-    #             "Alexa, open sample skill.",
-    #             "Alexa, play sample skill."
-    #           ],
-    #           "keywords": [
-    #             "Descriptive_Phrase_1",
-    #             "Descriptive_Phrase_2",
-    #             "Descriptive_Phrase_3"
-    #           ],
-    #           "smallIconUri": "https://smallUri.com",
-    #           "largeIconUri": "https://largeUri.com",
-    #           "name": "Sample skill name.",
-    #           "description": "This skill does interesting things."
-    #         }
-    #       },
-    #       "isAvailableWorldwide": False,
-    #       "testingInstructions": "1) Say 'Alexa, hello world'",
-    #       "category": "HEALTH_AND_FITNESS",
-    #       "distributionCountries": [
-    #         "US",
-    #         "GB",
-    #         "DE"
-    #       ]
-    #     },
-    #     "apis": {
-    #       "householdList": {}
-    #     },
-    #     "manifestVersion": "1.0",
-    #     "permissions": [
-    #       {
-    #         "name": "alexa::devices:all:address:full:read"
-    #       },
-    #       {
-    #         "name": "alexa:devices:all:address:country_and_postal_code:read"
-    #       },
-    #       {
-    #         "name": "alexa::household:lists:read"
-    #       },
-    #       {
-    #         "name": "alexa::household:lists:write"
-    #       }
-    #     ],
-    #     "privacyAndCompliance": {
-    #       "allowsPurchases": False,
-    #       "locales": {
-    #         "en-US": {
-    #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com",
-    #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com"
-    #         }
-    #       },
-    #       "isExportCompliant": True,
-    #       "containsAds": False,
-    #       "isChildDirected": False,
-    #       "usesPersonalInfo": False
-    #     },
-    #     "events": {
-    #       "endpoint": {
-    #         "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-    #       },
-    #       "subscriptions": [
-    #         {
-    #           "eventName": "SKILL_ENABLED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_DISABLED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_PERMISSION_ACCEPTED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_PERMISSION_CHANGED"
-    #         },
-    #         {
-    #           "eventName": "SKILL_ACCOUNT_LINKED"
-    #         },
-    #         {
-    #           "eventName": "ITEMS_CREATED"
-    #         },
-    #         {
-    #           "eventName": "ITEMS_UPDATED"
-    #         },
-    #         {
-    #           "eventName": "ITEMS_DELETED"
-    #         }
-    #       ],
-    #       "regions": {
-    #         "NA": {
-    #           "endpoint": {
-    #             "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
-    #           }
-    #         }
-    #       }
-    #     }
-    #   }
-    # },
-
-
-    # # Flash Briefing Skill Manifest
-    # {
-    #   "skillManifest": {
-    #     "manifestVersion": "1.0",
-    #     "publishingInformation": {
-    #       "locales": {
-    #         "en-US": {
-    #           "name": "Sample skill name.",
-    #           "summary": "This is a sample Alexa skill.",
-    #           "description": "This skill has basic and advanced features.",
-    #           "smallIconUri": "https://smallUri.com",
-    #           "largeIconUri": "https://largeUri.com",
-    #           "examplePhrases": [],
-    #           "keywords": [
-    #             "Flash Briefing",
-    #             "News",
-    #             "Happenings"
-    #           ]
-    #         }
-    #       },
-    #       "distributionCountries": [
-    #         "US",
-    #         "GB",
-    #         "DE"
-    #       ],
-    #       "isAvailableWorldwide": False,
-    #       "testingInstructions": "1) Say 'Alexa, hello world'",
-    #       "category": "HEALTH_AND_FITNESS"
-    #     },
-    #     "privacyAndCompliance": {
-    #       "allowsPurchases": False,
-    #       "usesPersonalInfo": False,
-    #       "isChildDirected": False,
-    #       "isExportCompliant": True,
-    #       "containsAds": False,
-    #       "locales": {
-    #         "en-US": {
-    #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com",
-    #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com"
-    #         }
-    #       }
-    #     },
-    #     "apis": {
-    #       "flashBriefing": {
-    #         "locales": {
-    #           "en-US": {
-    #             "customErrorMessage": "Error message",
-    #             "feeds": [
-    #               {
-    #                 "name": "feed name",
-    #                 "isDefault": True,
-    #                 "vuiPreamble": "In this skill",
-    #                 "updateFrequency": "HOURLY",
-    #                 "genre": "POLITICS",
-    #                 "imageUri": "https://fburi.com",
-    #                 "contentType": "TEXT",
-    #                 "url": "https://feeds.sampleskill.com/feedX"
-    #               }
-    #             ]
-    #           }
-    #         }
-    #       }
-    #     }
-    #   }
-    # },
-
-    # # Video Skill Manifest
-    # {
-    #   "skillManifest": {
-    #     "publishingInformation": {
-    #       "locales": {
-    #         "en-US": {
-    #           "summary": "This is a sample Alexa skill.",
-    #           "examplePhrases": [
-    #             "Alexa, tune to channel 206",
-    #             "Alexa, search for comedy movies",
-    #             "Alexa, pause."
-    #           ],
-    #           "keywords": [
-    #             "Video",
-    #             "TV"
-    #           ],
-    #           "name": "VideoSampleSkill",
-    #           "smallIconUri": "https://smallUri.com",
-    #           "largeIconUri": "https://smallUri.com",
-    #           "description": "This skill has video control features."
-    #         }
-    #       },
-    #       "isAvailableWorldwide": False,
-    #       "testingInstructions": "",
-    #       "category": "SMART_HOME",
-    #       "distributionCountries": [
-    #         "US",
-    #         "GB",
-    #         "DE"
-    #       ]
-    #     },
-    #     "apis": {
-    #       "video": {
-    #         "locales": {
-    #           "en-US": {
-    #             "videoProviderTargetingNames": [
-    #               "TV provider"
-    #             ],
-    #             "catalogInformation": [
-    #               {
-    #                 "sourceId": "1234",
-    #                 "type": "FIRE_TV"
-    #               }
-    #             ]
-    #           }
-    #         },
-    #         "endpoint": {
-    #           "uri": "arn:aws:lambda:us-east-1:452493640596:function:sampleSkill"
-    #         },
-    #         "regions": {
-    #           "NA": {
-    #             "endpoint": {
-    #               "uri": "arn:aws:lambda:us-east-1:452493640596:function:sampleSkill"
-    #             },
-    #             "upchannel": [
-    #               {
-    #                 "uri": "arn:aws:sns:us-east-1:291420629295:sampleSkill",
-    #                 "type": "SNS"
-    #               }
-    #             ]
-    #           }
-    #         }
-    #       }
-    #     },
-    #     "manifestVersion": "1.0",
-    #     "privacyAndCompliance": {
-    #       "allowsPurchases": False,
-    #       "locales": {
-    #         "en-US": {
-    #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com",
-    #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com"
-    #         }
-    #       },
-    #       "isExportCompliant": True,
-    #       "isChildDirected": False,
-    #       "usesPersonalInfo": False,
-    #       "containsAds": False
-    #     }
-    #   }
-    # },
-
-]
+        # # List Skill Manifest With No Custom Component
+        # {
+        #   "skillManifest": {
+        #     "publishingInformation": {
+        #       "locales": {
+        #         "en-US": {
+        #           "summary": "This is a sample Alexa skill.",
+        #           "examplePhrases": [
+        #             "Alexa, open sample skill.",
+        #             "Alexa, play sample skill."
+        #           ],
+        #           "keywords": [
+        #             "Descriptive_Phrase_1",
+        #             "Descriptive_Phrase_2",
+        #             "Descriptive_Phrase_3"
+        #           ],
+        #           "smallIconUri": "https://smallUri.com",
+        #           "largeIconUri": "https://largeUri.com",
+        #           "name": "Sample skill name.",
+        #           "description": "This skill does interesting things."
+        #         }
+        #       },
+        #       "isAvailableWorldwide": False,
+        #       "testingInstructions": "1) Say 'Alexa, hello world'",
+        #       "category": "HEALTH_AND_FITNESS",
+        #       "distributionCountries": [
+        #         "US",
+        #         "GB",
+        #         "DE"
+        #       ]
+        #     },
+        #     "apis": {
+        #       "householdList": {}
+        #     },
+        #     "manifestVersion": "1.0",
+        #     "permissions": [
+        #       {
+        #         "name": "alexa::devices:all:address:full:read"
+        #       },
+        #       {
+        #         "name": "alexa:devices:all:address:country_and_postal_code:read"
+        #       },
+        #       {
+        #         "name": "alexa::household:lists:read"
+        #       },
+        #       {
+        #         "name": "alexa::household:lists:write"
+        #       }
+        #     ],
+        #     "privacyAndCompliance": {
+        #       "allowsPurchases": False,
+        #       "locales": {
+        #         "en-US": {
+        #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com",
+        #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com"
+        #         }
+        #       },
+        #       "isExportCompliant": True,
+        #       "containsAds": False,
+        #       "isChildDirected": False,
+        #       "usesPersonalInfo": False
+        #     },
+        #     "events": {
+        #       "endpoint": {
+        #         "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+        #       },
+        #       "subscriptions": [
+        #         {
+        #           "eventName": "SKILL_ENABLED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_DISABLED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_PERMISSION_ACCEPTED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_PERMISSION_CHANGED"
+        #         },
+        #         {
+        #           "eventName": "SKILL_ACCOUNT_LINKED"
+        #         },
+        #         {
+        #           "eventName": "ITEMS_CREATED"
+        #         },
+        #         {
+        #           "eventName": "ITEMS_UPDATED"
+        #         },
+        #         {
+        #           "eventName": "ITEMS_DELETED"
+        #         }
+        #       ],
+        #       "regions": {
+        #         "NA": {
+        #           "endpoint": {
+        #             "uri": "arn:aws:lambda:us-east-1:040623927470:function:sampleSkill"
+        #           }
+        #         }
+        #       }
+        #     }
+        #   }
+        # },
 
 
-class FakeAPI(object):
-    def __init__(self, manifests):
-        self.manifests = manifests
+        # # Flash Briefing Skill Manifest
+        # {
+        #   "skillManifest": {
+        #     "manifestVersion": "1.0",
+        #     "publishingInformation": {
+        #       "locales": {
+        #         "en-US": {
+        #           "name": "Sample skill name.",
+        #           "summary": "This is a sample Alexa skill.",
+        #           "description": "This skill has basic and advanced features.",
+        #           "smallIconUri": "https://smallUri.com",
+        #           "largeIconUri": "https://largeUri.com",
+        #           "examplePhrases": [],
+        #           "keywords": [
+        #             "Flash Briefing",
+        #             "News",
+        #             "Happenings"
+        #           ]
+        #         }
+        #       },
+        #       "distributionCountries": [
+        #         "US",
+        #         "GB",
+        #         "DE"
+        #       ],
+        #       "isAvailableWorldwide": False,
+        #       "testingInstructions": "1) Say 'Alexa, hello world'",
+        #       "category": "HEALTH_AND_FITNESS"
+        #     },
+        #     "privacyAndCompliance": {
+        #       "allowsPurchases": False,
+        #       "usesPersonalInfo": False,
+        #       "isChildDirected": False,
+        #       "isExportCompliant": True,
+        #       "containsAds": False,
+        #       "locales": {
+        #         "en-US": {
+        #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com",
+        #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com"
+        #         }
+        #       }
+        #     },
+        #     "apis": {
+        #       "flashBriefing": {
+        #         "locales": {
+        #           "en-US": {
+        #             "customErrorMessage": "Error message",
+        #             "feeds": [
+        #               {
+        #                 "name": "feed name",
+        #                 "isDefault": True,
+        #                 "vuiPreamble": "In this skill",
+        #                 "updateFrequency": "HOURLY",
+        #                 "genre": "POLITICS",
+        #                 "imageUri": "https://fburi.com",
+        #                 "contentType": "TEXT",
+        #                 "url": "https://feeds.sampleskill.com/feedX"
+        #               }
+        #             ]
+        #           }
+        #         }
+        #       }
+        #     }
+        #   }
+        # },
 
-    def skillGet(self, id):
-        return self.manifests[int(id)]['skillManifest']
+        # # Video Skill Manifest
+        # {
+        #   "skillManifest": {
+        #     "publishingInformation": {
+        #       "locales": {
+        #         "en-US": {
+        #           "summary": "This is a sample Alexa skill.",
+        #           "examplePhrases": [
+        #             "Alexa, tune to channel 206",
+        #             "Alexa, search for comedy movies",
+        #             "Alexa, pause."
+        #           ],
+        #           "keywords": [
+        #             "Video",
+        #             "TV"
+        #           ],
+        #           "name": "VideoSampleSkill",
+        #           "smallIconUri": "https://smallUri.com",
+        #           "largeIconUri": "https://smallUri.com",
+        #           "description": "This skill has video control features."
+        #         }
+        #       },
+        #       "isAvailableWorldwide": False,
+        #       "testingInstructions": "",
+        #       "category": "SMART_HOME",
+        #       "distributionCountries": [
+        #         "US",
+        #         "GB",
+        #         "DE"
+        #       ]
+        #     },
+        #     "apis": {
+        #       "video": {
+        #         "locales": {
+        #           "en-US": {
+        #             "videoProviderTargetingNames": [
+        #               "TV provider"
+        #             ],
+        #             "catalogInformation": [
+        #               {
+        #                 "sourceId": "1234",
+        #                 "type": "FIRE_TV"
+        #               }
+        #             ]
+        #           }
+        #         },
+        #         "endpoint": {
+        #           "uri": "arn:aws:lambda:us-east-1:452493640596:function:sampleSkill"
+        #         },
+        #         "regions": {
+        #           "NA": {
+        #             "endpoint": {
+        #               "uri": "arn:aws:lambda:us-east-1:452493640596:function:sampleSkill"
+        #             },
+        #             "upchannel": [
+        #               {
+        #                 "uri": "arn:aws:sns:us-east-1:291420629295:sampleSkill",
+        #                 "type": "SNS"
+        #               }
+        #             ]
+        #           }
+        #         }
+        #       }
+        #     },
+        #     "manifestVersion": "1.0",
+        #     "privacyAndCompliance": {
+        #       "allowsPurchases": False,
+        #       "locales": {
+        #         "en-US": {
+        #           "termsOfUseUrl": "http://www.termsofuse.sampleskill.com",
+        #           "privacyPolicyUrl": "http://www.myprivacypolicy.sampleskill.com"
+        #         }
+        #       },
+        #       "isExportCompliant": True,
+        #       "isChildDirected": False,
+        #       "usesPersonalInfo": False,
+        #       "containsAds": False
+        #     }
+        #   }
+        # },
 
-@pytest.fixture
-def api():
-    return FakeAPI(TESTDATA)
-
-
-class TestListOverlay(object):
-    def test_operations(self):
-        akey = 'foo'
-        alist = [{akey: 0}, {akey: 1}, {akey: 2}, {akey: 3}]
-        aoverlay = ListOverlay(akey, alist)
-        assert aoverlay[0] == 0
-        assert aoverlay == [0,1,2,3]
-        assert str(aoverlay) == "[0, 1, 2, 3]"
-
-        aoverlay.append(4)
-        assert alist[4] == {akey: 4}
-        assert aoverlay[4] == 4
-
-        aoverlay[4] = 'ab'
-        assert alist[4] == {akey: 'ab'}
-        assert 'ab' in aoverlay
-
-        assert aoverlay.pop(0) == 0
-        assert alist[0] == {akey: 1}
-        assert aoverlay.pop() == 'ab'
-        assert alist[-1] == {akey: 3}
-
-        assert aoverlay == [1, 2, 3]
-
-        iterres = [n for n in iter(aoverlay)]
-        assert iterres == [1, 2, 3]
-
-        iterres = [n for n in reversed(aoverlay)]
-        assert iterres == [3, 2, 1]
-
-        alist[1] = {akey: 1}
-        assert aoverlay == [1, 1, 3]
-
-        del(aoverlay[1])
-        assert aoverlay == [1, 3]
-        assert alist == [{akey: 1}, {akey: 3}]
-
-        aoverlay[1:2] = [5,4]
-        assert aoverlay == [1, 5, 4]
-        assert alist == [{akey: 1}, {akey: 5}, {akey: 4}]
-
-
-class TestRestrictedList(object):
-    @pytest.mark.parametrize("args,opsuccess,opfail,expected", [
-        ([types.BooleanType], [True, False], ['1', 3, 1.2], [True, False])
-    ])
-    def test_operations(self, args, opsuccess, opfail, expected):
-        print "Args: %s" % args
-        tlist = RestrictedList(*args)
-
-        print "OpSuccess: %s" % (opsuccess, )
-        for v in opsuccess:
-            tlist.append(v)
-
-        print "opFail: %s" % (opfail, )
-        for v in opfail:
-            with pytest.raises(Exception) as excinfo:
-                tlsit.append = v
-
-        print "Expected: %s Current: %s" % (expected, tlist)
-        assert expected == tlist
-
-
-    def test_methodsBool(self):
-        tlist = RestrictedList(types.BooleanType, [True, False])
-        assert tlist == [True, False]
-        tlist.append(True)
-        tlist[1] = True
-        assert tlist.pop(0)
-        print tlist
-        assert tlist == [True, True]
-        tlist[2:4] = [True, False, False, True]
-        print tlist
-        assert tlist == [True, True, True, False, False, True]
-        tlist.insert(1, True)
-        tlist.extend([True, False])
-
-    def test_methodsBoolFail(self):
-        tlist = RestrictedList(types.BooleanType, [True, False])
-        assert tlist == [True, False]
-        with pytest.raises(Exception) as excinfo:
-            tlist.append('foo')
-        with pytest.raises(Exception) as excinfo:
-            tlist[1] = 'foo'
-        with pytest.raises(Exception) as excinfo:
-            tlist[2:4] = ['True', 'False', 'False', 'True']
-        with pytest.raises(Exception) as excinfo:
-            tlist.insert(1, 'True')
-        with pytest.raises(Exception) as excinfo:
-            tlist.extend(['True', 'False'])
-        assert tlist == [True, False]
-
-
-class TestRestrictedDict(object):
-    def test_operations(self):
-        tdict = RestrictedDict({
-            'astring': types.StringType,
-            'aint': types.IntType,
-            'abool': types.BooleanType,
-            'aenum': ['vala', 'valb'],
-            })
-
-        # check normal
-        tdict['astring'] = 'sfsf'
-        tdict['aint'] = 12
-        tdict['abool'] = True
-        tdict['aenum'] = 'valb'
-
-        print tdict
-        assert tdict == {
-            'aint': 12, 'abool': True,
-            'aenum': 'valb', 'astring': 'sfsf'
-        }
-
-        # check fail
-        for key, values in {
-            'astring': (1.23, True, False),
-            'aint': ('blub', 1.34),
-            'abool': ('ab', 4, 1.2),
-            'aenum': (9, 1.2, True, 'blub'),
-        }.items():
-            for value in values:
-                print "key: %s  << %s" % (key, pformat(value) )
-                with pytest.raises(Exception) as excinfo:
-                    tdict[key] = value
-
-        # check convert
-        for key, values in {
-            'aint': [(True, 1), (False, 0)],
-            'abool': [(1, True), (0, False)],
-        }.items():
-            for value, expected in values:
-                print "key: %s << %s >> %s" % (key, pformat(value), pformat(expected) )
-                tdict[key] = value
-                assert tdict[key] == expected
-
-        # check setdefault
-        with pytest.raises(Exception) as excinfo:
-            tdict.setdefault('abool', 'astring')
-        tdict.setdefault('abool', True)
-
-        # check adding invalid key
-        with pytest.raises(Exception) as excinfo:
-            tdict.setdefault('foo', 'astring')
-        with pytest.raises(Exception) as excinfo:
-            tdict['foo'] = 'astring'
-
-
-
-
-
+    ]
 
 
 
@@ -723,52 +559,6 @@ class TestRestrictedDict(object):
 
 class TestAlexaSkill(object):
 
-    """
-         Test class mehthods
-
-    """
-    @pytest.mark.parametrize('path,rdict,exp', [
-        ('ab.{bc}.de', {'bc': 'ef'}, 'ab.ef.de'),
-        ('ab.de', {}, 'ab.de'),
-        ('ab.{bc}.de.{bc}.nf', {'bc': 'ef'}, 'ab.ef.de.ef.nf'),
-        ('ab.{bc}.de.{ac}.nf', {'bc': 'ef', 'ac': 'nb'}, 'ab.ef.de.nb.nf'),
-    ])
-    def test_replacePath(self, path, rdict, exp):
-        print "Path: %s, ReqDict: %s, Expected: %s" % (path, rdict, exp)
-        res = AlexaSkill._replacePath('ab.{bc}.de', {'bc': 'ef'})
-        assert res == 'ab.ef.de'
-
-    @pytest.mark.parametrize('path,rdict,exp', [
-        ('ab.de', {'bc': 'ef'}, "Need to provide [] but got ['bc'] instead."),
-        ('ab.{cd}.de', {}, "Need to provide ['cd'] but got [] instead."),
-        ('ab.{cd}.de', {'cd': 'ef', 'ab': 'ne'}, "Need to provide ['cd'] but got ['ab', 'cd'] instead."),
-    ])
-    def test_replacePathExc(self, path, rdict, exp):
-        print "Path: %s, ReqDict: %s, Expected: %s" % (path, rdict, exp)
-        with pytest.raises(Exception) as excinfo:
-            res = AlexaSkill._replacePath(path, rdict)
-        assert exp in excinfo.value
-
-    @pytest.mark.parametrize('path,data,exp', [
-        ('ab', {'ab': 1}, 1),
-        ('ab.cd.ef', {'ab': {'cd': {'ef': 2}}}, 2),
-        ('ab.cd', {'ab': {'cd': {'ef': 3}}}, {'ef': 3}),
-    ])
-    def test_iterPath(self, path, data, exp):
-        print "Path: %s, data: %s, Expected: %s" % (path, data, exp)
-        res = AlexaSkill._iterPath(data, path.split('.'))
-        assert res == exp
-
-    @pytest.mark.parametrize('path,data,exp', [
-        ('ab.de', {'ab': 1}, 'Unable to find value for "de".'),
-        ('ab.gf.ef', {'ab': {'cd': {'ef': 2}}}, 'Unable to find value for "gf".'),
-    ])
-    def test_iterPathExc(self, path, data, exp):
-        print "Path: %s, data: %s, Expected: %s" % (path, data, exp)
-        with pytest.raises(Exception) as excinfo:
-            res = AlexaSkill._iterPath(data, path.split('.'))
-        print excinfo.value
-        assert exp in excinfo.value
 
     """
         Test methods

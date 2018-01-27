@@ -4,251 +4,19 @@
 import logging
 import types
 import re
-import functools
 from copy import copy
 from pprint import pformat
+
+from utils import ListOverlay, RestrictedDict, RestrictedList, Field, ParamField
+from AlexaInterface import AlexaInterface, AlexaInterfaceFactory
 
 log = logging.getLogger('AlexaSkillMgtAPI')
 log.addHandler(logging.NullHandler())
 
 KWARGS_PAT = re.compile('\.{([a-z]+)}\.')
 
-def validConvert(value, adef):
-    # print "aDef: %s value: %s Valuetyep: %s" % (adef, value, type(value))
-    # if not isinstance(adef, types.ListType):
-    #     print "isnstand %s"  % isinstance(value, adef)
-    if isinstance(adef, types.ListType):
-        if value not in adef:
-            raise ValueError('Value "%s" must be one of %s' % (
-                value, adef))
-    elif not isinstance(value, adef):
-        if adef == types.StringType and isinstance(value, types.IntType) and not isinstance(value, types.BooleanType):
-            return str(value)   # exception for numeric value
-        elif adef == types.BooleanType and value in [1, 0]:
-            return bool(value)
 
-        raise ValueError('Value "%s" is type %s but must be %s' % (
-            value, type(value), adef))
-    return value
-
-
-class ListOverlay(list):
-
-    class Iterator():
-        def __init__(self, n, reverse=False):
-            self.i = 0
-            self.reverse = reverse
-            if self.reverse:
-                self.i = len(n) - 1
-            self.n = n
-
-        def __iter__(self):
-            return self
-
-        def next(self):
-            if self.i < len(self.n) and self.i >= 0:
-                i = self.n[self.i]
-                if self.reverse:
-                    self.i -= 1
-                else:
-                    self.i += 1
-                return i
-            else:
-                raise StopIteration()
-
-    def __init__(self, definition, orig, allowedTypes=None):
-        self._definition = definition
-        self._orig = orig
-        self._allowedTypes = allowedTypes
-
-    def _doValidate(self, value):
-        if self._allowedTypes is None:
-            return value
-        else:
-            return validConvert(value, self._allowedTypes)
-
-    def __add__(self, y):
-        res = self._orig.__add__([{self._definition: _doValidate(v)} for v in y])
-        return ListOverlay(self._definition, res, self._allowedTypes)
-
-    def __contains__(self, y):
-        return self._orig.__contains__({self._definition: y})
-
-    def __delitem__(self, y):
-        self._orig.__delitem__(y)
-
-    def __delslice__(self, i, j):
-        self._orig.__delslice__(i, j)
-
-    def __eq__(self, y):
-        return self._orig.__eq__([{self._definition: v} for v in y])
-
-    # format?
-    def __ge__(self, y):
-        return self._orig.__ge__([{self._definition: v} for v in y])
-
-    def __getitem__(self, y):
-        return self._orig.__getitem__(y)[self._definition]
-
-    def __getslice__(self, i, y):
-        return [n[self._definition] for n in self._orig.__getslice__(i, j)]
-
-    def __gt__(self, y):
-        return self._orig.__gt__([{self._definition: v} for v in y])
-
-    def __hash__(self):
-        return self._orig.__hash__()
-
-    def __iadd__(self, y):
-        self._orig.__iadd__([{self._definition: v} for v in y])
-        return self
-
-    def __imul__(self, y):
-        self._orig.__imul__([{self._definition: v} for v in y])
-        return self
-
-    def __ne__(self, y):
-        return self._orig.__ne__([{self._definition: v} for v in y])
-
-    def __iter__(self):
-        return self.Iterator(self)
-
-
-    def __le__(self, y):
-        return self._orig.__le__([{self._definition: v} for v in y])
-
-    def __len__(self):
-        return self._orig.__len__()
-
-    def __lt__(self, y):
-        return self._orig.__lt__([{self._definition: v} for v in y])
-
-    def __mul__(self, y):
-        res = self._orig.__mul__([{self._definition: v} for v in y])
-        return ListOverlay(self._definition, res)
-
-    def __ne__(self, y):
-        return self._orig.__lt__([{self._definition: v} for v in y])
-
-    def __repr__(self):
-        return [v[self._definition] for v in self._orig].__repr__()
-
-    def __reversed__(self):
-        return self.Iterator(self, True)
-
-    def __rmul__(self, n):
-        return ListOverlay(self._definition, self._orig.__rmul__(n), self._allowedTypes)
-
-    def __setitem__(self, i, y):
-        self._orig[i][self._definition] = self._doValidate(y)
-
-    def __setslice__(self, i, j, y):
-        self._orig[i:j] = [{self._definition: self._doValidate(n)} for n in y]
-
-    def __sizeof__(self):
-        return self._orig.__sizeof__()
-
-    def extend(self, iterable):
-        for i in iterable:
-            self.append(self._doValidate(i))
-
-    def append(self, object):
-        self._orig.append({self._definition: self._doValidate(object)})
-
-    def index(self, object):
-        return self._orig.index({self._definition: object})
-
-    def insert(self, index, object):
-        return self._orig.insert(index, {self._definition: self._doValidate(object)})
-
-    def pop(self, index=-1):
-        return self._orig.pop(index)[self._definition]
-
-    def remove(self, value):
-        return self._origi.remove({self._definition: value})
-
-    def reverse(self):
-        self._orig.reverse()
-
-    def sort(self, cmp=None, key=None, reverse=False):
-        cmpNew = None
-        if cmp is not None:
-            def cmpNew(x, y):
-                return cmp(x[self._definition], y[self._definition])
-
-        self._orig.sort(cmpNew, key, reverse)
-
-
-class RestrictedDict():
-    def __init__(self, definition, *args, **kwargs):
-        self._definition = definition
-        self._data = dict(*args, **kwargs)
-
-    def __setitem__(self, key, value):
-        self._data[key] = validConvert(value, self._definition.get(key))
-
-    def setdefault(self, key, value=None):
-        return self._data.setdefault(key, validConvert(value, self._definition.get(key)))
-
-    def __getattr__(self, attrib):
-        # log.debug("__getattr__ called for %s" % attrib)
-        return getattr(self._data, attrib)
-
-    # def __setattr__(self, attrib, value):
-    #     if attrib not in ['_definition', 'self._data']
-    #     return setattr(self._data, attrib, value)
-
-
-class RestrictedList():
-    def __init__(self, definition, *args, **kwargs):
-        self._definition = definition
-        self._data = list(*args, **kwargs)
-
-    def __setitem__(self, key, value):
-        self._data[key] = validConvert(value, self._definition)
-
-    def __setslice__(self, i, j, y):
-        self._data.__setslice__(i, j, [validConvert(v, self._definition) for v in y])
-
-    def append(self, value):
-        self._data.append(validConvert(value, self._definition))
-
-    def extend(self, value):
-        self._data.extend([validConvert(v, self._definition) for v in value])
-
-    def insert(self, index, object):
-        self._data.insert(index, validConvert(object, self._definition))
-
-    def __getattr__(self, attrib):
-        # log.debug("__getattr__ called for %s" % attrib)
-        return getattr(self._data, attrib)
-
-class Field(object):
-    """ A manifest field """
-
-    def __init__(self, key):
-        self._key = key
-
-    def __set__(self, obj, val):
-        # log.debug( "__set__ %s %s" % (obj, val))
-        obj._obj.set(self._key, val, **obj._kwargs)
-
-    def __get__(self, obj, objtype):
-        # log.debug("__get__ %s %s" % (obj, objtype))
-        # log.debug("Field: _key %s obj._kwargs %s" % (self._key, obj._kwargs))
-        return obj._obj.get(self._key, **obj._kwargs)
-
-
-class ParamField(object):
-    """ Container for parametrized manifest field """
-
-    def __init__(self, obj, **kwargs):
-        super(ParamField, self).__init__()
-        self._kwargs = kwargs
-        self._obj = obj
-
-
-class AlexaSkill(object):
+class AlexaSkill(AlexaInterface):
     """
     """
     _subdict = {
@@ -337,135 +105,34 @@ class AlexaSkill(object):
         'region': ['endpointRegions', 'eventRegions'],
     }
 
-    def __init__(self, AlexaSkillMmgtAPI, skillId, manifest=None, defaultLocale=None):
-        self._obj = self
-        self._kwargs = {}
+    def __init__(self, id, data=None, api=None, defaultLocale=None):
+        if not api or not data:
+            raise Exception("You need to provide on of 'api' or 'data'.")
+
         self._model = {}
-
-        self._api = AlexaSkillMmgtAPI
-        self._id = skillId
+        self._api = api
         self._defaultLocale = defaultLocale
-        self._loadData(manifest)
-        self._populateClass()
+        if data:
+            self._data = data
+        else:
+            self._loadData(data)
+        super(AlexaSkill, self).__init__(id, self._data)
 
-    def _populateClass(self):
-        # build subclasses also
-        for subclass, scmethods in self._subclass.items():
-            targets = []
-            for scmethod in scmethods:
-                try:
-                    targets.extend(self.get(scmethod))
-                except:
-                    pass
-            for target in targets:
-                setattr(
-                    self,
-                    '%s_%s' % (subclass, target.replace('-', '_')),
-                    getattr(self, subclass)(self, **{subclass:target})
-                )
 
-    def _loadData(self, manifest=None):
-        if not manifest:
-            manifest = self._api.skillGet(self._id)
-        self._manifest = manifest
+    def _loadData(self):
+        if not self._api:
+            log.error('Cannot read data - no api provided')
+            return False
+
+        manifest = self._api.skillGet(self._id)
+        self._data = manifest
         for locale in self.get('locales'):
-            self._model[locale] = None
-            try:
-                self._model[locale] = self._api.modelGet(self._id, locale)
-            except Exception, e:
+            model = AlexaInteractionModelFactory(self._api, self._id, locale)
+            if model:
+                self._model[locale] = model
+            else:
                 log.warning("Could not load modell for language %s" % (locale))
 
-    @classmethod
-    def _replacePath(cls, path, data):
-        needReplace = KWARGS_PAT.findall(path)
-        if needReplace == data.keys():
-            for key, value in data.items():
-                path = path.replace('{%s}' % key, value)
-            return path
-        else:
-            raise Exception('Need to provide %s but got %s instead.' % (needReplace, data.keys()))
-
-    @classmethod
-    def _iterPath(cls, data, path, forWrite=False):
-        if forWrite and len(path) == 1:
-            # in case of write we need to exit earlier
-            return (data, path[0])
-        elif path:
-            currentKey = path.pop(0)
-            if isinstance(data, types.DictType) and currentKey in data:
-                return cls._iterPath(data[currentKey], path)
-            elif isinstance(data, types.DictType) and forWrite in data:
-                data[currentKey] = {}
-                return cls._iterPath(data[currentKey], path)
-            else:
-                raise ValueError('Unable to find value for "%s".' % currentKey)
-        else:
-            return data
-
-    def _doIterPath(self, paramDef, forWrite, **kwargs):
-        if not paramDef:
-            raise Exception('Unable to find definition for "%s" must be one of %s' % (
-                param, self._structure.keys()
-                ))
-        path = self._replacePath(paramDef[1], kwargs).split('.')
-        value = self._iterPath(self._manifest, path)
-        return value
-
-    def get(self, param, **kwargs):
-        log.debug("get(%s, %s)" % (param, kwargs))
-        paramDef = self._structure.get(param)
-        value = self._doIterPath(paramDef, False, **kwargs)
-
-        if param in self._subdict:
-            subdictDef = self._subdict[param]
-            if isinstance(subdictDef, types.DictType):
-                if len(subdictDef) == 1:
-                    subkey, restriction = subdictDef.items()[0]
-                    return ListOverlay(subkey, value, restriction)
-
-                elif isinstance(subdictDef, types.ListType):
-                    res = []
-                    for val in value:
-                        res.append(RestrictedDict(subdictDef, value))
-                    return res
-            elif isinstance(subdictDef, types.ListType):
-                # is an enum .. we can do not much
-                pass
-            else:
-                raise Exception('Invalid definition type "%s" for %s' % (type(subdictDef, param)))
-        elif isinstance(paramDef[2], types.StringType):
-            return getattr(value, paramDef[2])()
-        return value
-
-    def set(self, param, value, **kwargs):
-        log.debug("get(%s, %s, %s)" % (param, value, kwargs))
-        paramDef = self._structure.get(param)
-
-        # do some checks first
-        if paramDef[0] is False:
-            raise Exception('Param "%s" is not writeable.' % (param, ))
-        if not isinstance(value, paramDef):
-            raise Exception('Invalid type "%s" for param %s - expected %s' % (
-                type(value), param, paramDef[2]
-                ))
-        subdictDef = self._subdict.get(param)
-        if subdictDef and isinstance(subdictDef, types.ListType) and value not in subdictDef:
-            raise Exception('Param "%s" invalid value "%s" expect one of: %s' % (
-                parm, value, subdictDef
-                ))
-
-        data, key = value = self._doIterPath(param, True, **kwargs)
-        if paramDef[0] in [types.BooleanType, types.StringType, types.IntType]:
-            data[key] = value
-        elif paramDef[0] in [types.ListType]:
-            if isinstance(subdictDef, types.DictType) and len(subdictDef) == 1:
-                if isinstance(value, ListOverlay):
-                    data[key] = value._orig
-                else:
-                    akey = self._subdict[param]
-                    data[key] = [{akey: v} for v in values]
-            else:
-                data[key] = value
 
     def __repr__(self):
         return '<%s.%s object at %s id=%s models=%s>' % (
@@ -541,30 +208,30 @@ def AlexaSKillFactory(api, skillID):
     else:
         baseClass = AlexaSkill
 
-    # add attributes
-    for key, attribDef in baseClass._structure.items():
-        sub = KWARGS_PAT.findall(attribDef[1])
-        if len(sub) == 1:
-            # arguments with placeholders
-            subclass = sub[0]
-            if not hasattr(baseClass, subclass):
-                setattr(baseClass, subclass, ParamField)
-            setattr(getattr(baseClass, subclass), key, Field(key))
-        elif len(sub) > 1:
-            # if necessary need to implement this
-            raise Exception('Unable to handle "%s" more han one subkey: %s' % (sub, ))
-        else:
-            # the normal attribs without parameter
-            setattr(baseClass, key, Field(key))
+    # # add attributes
+    # for key, attribDef in baseClass._structure.items():
+    #     sub = KWARGS_PAT.findall(attribDef[1])
+    #     if len(sub) == 1:
+    #         # arguments with placeholders
+    #         subclass = sub[0]
+    #         if not hasattr(baseClass, subclass):
+    #             setattr(baseClass, subclass, ParamField)
+    #         setattr(getattr(baseClass, subclass), key, Field(key))
+    #     elif len(sub) > 1:
+    #         # if necessary need to implement this
+    #         raise Exception('Unable to handle "%s" more han one subkey: %s' % (sub, ))
+    #     else:
+    #         # the normal attribs without parameter
+    #         setattr(baseClass, key, Field(key))
 
-    return baseClass(api, skillID, manifest)
-
+    # return baseClass(api, skillID, manifest)
+    return AlexaInterfaceFactory(baseClass, skillID, manifest, api=api)
 
 
 if __name__ == '__main__':
     import sys
     from settings import Settings
-    from AlexaSkillMgtAPI import AlexaSkillMgtAPI
+    from AlexaMgtAPI import AlexaMgtAPI
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -573,7 +240,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     settings = Settings(sys.argv[1])
-    api = AlexaSkillMgtAPI(settings.accessToken)
+    api = AlexaMgtAPI(settings.accessToken)
 
     if len(sys.argv) > 2:
         skillID = sys.argv[2]

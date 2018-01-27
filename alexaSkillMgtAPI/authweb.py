@@ -14,6 +14,10 @@ import cherrypy
 from settings import Settings
 import requests
 import urllib
+import logging
+
+log = logging.getLogger('AlexaSkillMgtAPI')
+log.addHandler(logging.NullHandler())
 
 
 class Start(object):
@@ -58,6 +62,8 @@ class Start(object):
 
 if __name__ == '__main__':
     import sys
+
+    logging.basicConfig(level=logging.DEBUG)
 
     if len(sys.argv) < 2:
         print "usage: %s CONFIGFILE" % (sys.argv[0], )

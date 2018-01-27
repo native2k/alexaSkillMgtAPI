@@ -10,10 +10,10 @@ Tests for `alexaSkillMgtAPI` module.
 
 import pytest
 
-from alexaSkillMgtAPI import alexaSkillMgtAPI
+from AlexaMgtAPI import AlexaMgtAPI
 
 
-class TestAlexaskillmgtapi(unittest.TestCase):
+class AlexaMgtAPI(unittest.TestCase):
 
     def setUp(self):
         pass

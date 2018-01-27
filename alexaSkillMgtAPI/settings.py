@@ -4,12 +4,15 @@
 Sesttings object for API
 
 """
-
+import logging
 import yaml
 import types
 import requests
 from voluptuous import Schema, Required, All, Length, Range, Inclusive, Optional
 from datetime import datetime, timedelta
+
+log = logging.getLogger('AlexaSkillMgtAPI')
+log.addHandler(logging.NullHandler())
 
 BASE_KEY = 'AmazonOAuth'
 
@@ -54,7 +57,7 @@ class Settings(object):
         if self._config.get('refreshToken') and self._config.get('expiresIn'):
             parsedExpired = datetime.strptime(self.expiresIn, self._refresh_format)
             if parsedExpired < datetime.now():
-                print "Need to refresh token ..."
+                log.info("Need to refresh token ...")
                 self._refreshToken()
 
     def _refreshToken(self):
@@ -194,6 +197,8 @@ class Settings(object):
 
 if __name__ == '__main__':
     import sys
+
+    logging.basicConfig(level=logging.DEBUG)
 
     if len(sys.argv) < 2:
         print "usage: %s CONFIGFILE" % (sys.argv[0], )
