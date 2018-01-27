@@ -108,7 +108,7 @@ class AlexaSkillMgtAPI(object):
         204: 'NoContent',
         None: 'Unkown Error.',
     }
-    _valid_locales = ['de-DE', 'en-US', 'en-GB', 'en-IN', 'en-CA', 'de-DE']
+    _valid_locales = ['en-US', 'en-GB', 'en-IN', 'en-CA', 'de-DE']
 
     def __init__(self, accessToken):
         """Summary

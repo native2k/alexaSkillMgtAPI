@@ -10,7 +10,7 @@ Tests for `alexaSkill` module.
 import pytest
 import types
 from pprint import pformat
-from alexaSkillMgtAPI.AlexaSkill import AlexaSkill, ListOverlay, RestrictedDict, RestrictedList
+from alexaSkillMgtAPI.AlexaSkill import AlexaSKillFactory, AlexaSkill, ListOverlay, RestrictedDict, RestrictedList
 
 
 # base one
@@ -825,11 +825,17 @@ class TestAlexaSkill(object):
     def test_getParam(self, skillId, param, kwargs, exp, api):
         print "SkillID: %s, param: %s, KWargs: %s -> expected: %s" % (
             skillId, param, kwargs, exp)
-        skill = AlexaSkill(api, skillId)
-        res = skill.getParam(param, **kwargs)
+        skill = AlexaSKillFactory(api, skillId)
+        res = skill.get(param, **kwargs)
         print "res: %s" % (res, )
         assert res == exp
-
+        # assert skill.manifestVersion == "1.0"
+        if kwargs:
+            subobj = getattr(skill, ('%s_%s' % kwargs.items()[0]).replace('-', '_'))
+            assert subobj
+            assert getattr(subobj, param) == exp
+        else:
+            assert getattr(skill, param) == exp
 
 
 

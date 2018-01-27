@@ -231,6 +231,32 @@ class RestrictedList():
         return getattr(self._data, attrib)
 
 
+
+class Field(object):
+    """ A manifest field """
+
+    def __init__(self, key):
+        self._key = key
+
+    def __set__(self, obj, val):
+        # print "__set__ %s %s" % (obj, val)
+        obj._obj.set(self._key, val, **obj._kwargs)
+
+    def __get__(self, obj, objtype):
+        print "__get__ %s %s" % (obj, objtype)
+        print "Field: _key %s obj._kwargs %s" % (self._key, obj._kwargs)
+        return obj._obj.get(self._key, **obj._kwargs)
+
+
+class ParamField(object):
+    """ Container for parametrized manifest field """
+
+    def __init__(self, obj, **kwargs):
+        super(ParamField, self).__init__()
+        self._kwargs = kwargs
+        self._obj = obj
+
+
 class AlexaSkill(object):
     """
     """
@@ -276,6 +302,83 @@ class AlexaSkill(object):
     #     'permissions': 'name',
     #     'eventSubscriptions': 'eventName',
     # }
+
+
+    # locales = Field(False, 'publishingInformation.locales', 'keys')
+    # isAvailableWorldwide = Field(True, 'publishingInformation.isAvailableWorldwide', types.BooleanType)
+    # testingInstructions = Field(True, 'publishingInformation.testingInstructions', types.StringType)
+    # category = Field(True, 'publishingInformation.category', types.StringType, [
+    #     'ALARMS_AND_CLOCKS', 'ASTROLOGY', 'BUSINESS_AND_FINANCE', 'CALCULATORS', 'CALENDARS_AND_REMINDERS',
+    #     'CHILDRENS_EDUCATION_AND_REFERENCE', 'CHILDRENS_GAMES', 'CHILDRENS_MUSIC_AND_AUDIO',
+    #     'CHILDRENS_NOVELTY_AND_HUMOR', 'COMMUNICATION', 'CONNECTED_CAR', 'COOKING_AND_RECIPE',
+    #     'CURRENCY_GUIDES_AND_CONVERTERS', 'DATING', 'DELIVERY_AND_TAKEOUT', 'DEVICE_TRACKING',
+    #     'EDUCATION_AND_REFERENCE', 'EVENT_FINDERS', 'EXERCISE_AND_WORKOUT', 'FASHION_AND_STYLE', 'FLIGHT_FINDERS',
+    #     'FRIENDS_AND_FAMILY', 'GAME_INFO_AND_ACCESSORY', 'GAMES', 'HEALTH_AND_FITNESS', 'HOTEL_FINDERS',
+    #     'KNOWLEDGE_AND_TRIVIA', 'MOVIE_AND_TV_KNOWLEDGE_AND_TRIVIA', 'MOVIE_INFO_AND_REVIEWS', 'MOVIE_SHOWTIMES',
+    #     'MUSIC_AND_AUDIO_ACCESSORIES', 'MUSIC_AND_AUDIO_KNOWLEDGE_AND_TRIVIA',
+    #     'MUSIC_INFO_REVIEWS_AND_RECOGNITION_SERVICE', 'NAVIGATION_AND_TRIP_PLANNER', 'NEWS', 'NOVELTY',
+    #     'ORGANIZERS_AND_ASSISTANTS', 'PETS_AND_ANIMAL', 'PODCAST', 'PUBLIC_TRANSPORTATION',
+    #     'RELIGION_AND_SPIRITUALITY', 'RESTAURANT_BOOKING_INFO_AND_REVIEW', 'SCHOOLS', 'SCORE_KEEPING',
+    #     'SELF_IMPROVEMENT', 'SHOPPING', 'SMART_HOME', 'SOCIAL_NETWORKING', 'SPORTS_GAMES', 'SPORTS_NEWS',
+    #     'STREAMING_SERVICE', 'TAXI_AND_RIDESHARING', 'TO_DO_LISTS_AND_NOTES', 'TRANSLATORS', 'TV_GUIDES',
+    #     'UNIT_CONVERTERS', 'WEATHER', 'WINE_AND_BEVERAGE', 'ZIP_CODE_LOOKUP',
+    # ])
+    # distributionCountries = Field(True, 'publishingInformation.distributionCountries', types.ListType)
+
+    # class locale(ParamField):
+    #     summary = Field(True, 'publishingInformation.locales.{locale}.summary', types.StringType)
+    #     examplePhrases = Field(True, 'publishingInformation.locales.{locale}.examplePhrases', types.ListType)
+    #     keywords = Field(True, 'publishingInformation.locales.{locale}.keywords', types.ListType)
+    #     name = Field(True, 'publishingInformation.locales.{locale}.name', types.StringType)
+    #     smallIconUri = Field(True, 'publishingInformation.locales.{locale}.smallIconUri', types.StringType)
+    #     largeIconUri = Field(True, 'publishingInformation.locales.{locale}.largeIconUri', types.StringType)
+    #     description = Field(True, 'publishingInformation.locales.{locale}.description', types.StringType)
+    #     # privacy
+    #     privacyPolicyUrl = Field(True, 'privacyAndCompliance.locales.{locale}.privacyPolicyUrl', types.StringType)
+    #     termsOfUseUrl = Field(True, 'privacyAndCompliance.locales.{locale}.termsOfUseUrl', types.StringType)
+
+
+    # #  api
+    # endpointUri = Field(True, 'apis.custom.endpoint.uri', types.StringType)
+    # endpointCertType = Field(True, 'apis.custom.endpoint.sslCertificateType', types.StringType)
+    # interfaces = Field(True, 'apis.custom.interfaces', types.ListType, [
+    #     'AUDIO_PLAYER', 'VIDEO_APP', 'RENDER_TEMPLATE',
+    # ])
+
+    # endpointRegions = Field(False, 'apis.custom.regions', 'keys')
+    # eventRegions = Field(False, 'events.regions', 'keys')
+    # class region(ParamField):
+    #     endpointRegionUri = Field(True, 'apis.custom.regions.{region}.endpoint.uri', types.StringType)
+    #     endpointRegionCertType = Field(True, 'apis.custom.regions.{region}.endpoint.sslCertificateType', types.StringType)
+    #     eventRegionUri = Field(True, 'events.regions.{region}.endpoint.uri', types.StringType)
+
+    # manifestVersion = Field(False, 'manifestVersion', types.StringType)
+    # permissions = Field(True, 'permissions', types.ListType, {
+    #     'name': [
+    #         "alexa::devices:all:address:full:read",
+    #         "alexa:devices:all:address:country_and_postal_code:read",
+    #         "alexa::household:lists:read",
+    #         "alexa::household:lists:write",
+    #     ],
+    # })
+
+    # # privacy
+    # allowsPurchases = Field(True, 'privacyAndCompliance.allowsPurchases', types.BooleanType)
+    # usesPersonalInfo = Field(True, 'privacyAndCompliance.usesPersonalInfo', types.BooleanType)
+    # isChildDirected = Field(True, 'privacyAndCompliance.isChildDirected', types.BooleanType)
+    # isExportCompliant = Field(True, 'privacyAndCompliance.isExportCompliant', types.BooleanType)
+    # containsAds = Field(True, 'privacyAndCompliance.containsAds', types.BooleanType)
+
+    # # event
+    # eventUri =  Field(True, 'events.endpoint.uri', types.StringType)
+    # eventSubscriptions = Field(True, 'events.subscriptions', types.ListType, {
+    #     'eventName': [
+    #         "SKILL_ENABLED", "SKILL_DISABLED",
+    #         "SKILL_PERMISSION_ACCEPTED", "SKILL_PERMISSION_CHANGED",
+    #         "SKILL_ACCOUNT_LINKED",
+    #         "ITEMS_CREATED", "ITEMS_UPDATED","ITEMS_DELETED",
+    #     ]
+    # })
 
     _structure = {
         # publishing information
@@ -325,51 +428,36 @@ class AlexaSkill(object):
         'region': ['endpointRegions', 'eventRegions'],
     }
 
-    def __init__(self, AlexaSkillMmgtAPI, skillId, defaultLocale=None):
+    def __init__(self, AlexaSkillMmgtAPI, skillId, manifest=None, defaultLocale=None):
+        self._obj = self
+        self._kwargs = {}
+
         self._api = AlexaSkillMmgtAPI
         self._id = skillId
         self._defaultLocale = defaultLocale
-        self._loadData()
+        self._loadData(manifest)
         self._populateClass()
 
     def _populateClass(self):
-        class Dummy:
-            def __init__(self, id):
-                self.id = id
-
-        for attrib, attribDef in self._structure.items():
-            sub = KWARGS_PAT.findall(attribDef[1])
-            if sub:
-                targets = []
-                sublcass = []
-                for i in self._subclass[sub[0]]:
-                    try:
-                        sublcass.extend(self.get(i))
-                    except:
-                        pass
-
-                for asub in set(sublcass):
-                    if not hasattr(self, asub):
-                        setattr(self, asub, Dummy(asub))
-                    targets.append(
-                        (getattr(self, asub), {sub[0]:asub})
-                    )
-            else:
-                targets = [(self, {})]
-
+        # build subclasses also
+        for subclass, scmethods in self._subclass.items():
+            targets = []
+            for scmethod in scmethods:
+                try:
+                    targets.extend(self.get(scmethod))
+                except:
+                    pass
             for target in targets:
-                # if self.get(attrib, **target[1]):
-                    funcs = [functools.partial(self.get, attrib, **target[1])]
-                    if attribDef[0]:
-                        funcs.append(functools.partial(self.set, attrib, **target[1]))
-                    else:
-                        funcs.append(None)
-                    funcs.extend([None, 'parameter %s' % attrib])
-                    setattr(target[0], attrib, property(*funcs))
+                setattr(
+                    self,
+                    '%s_%s' % (subclass, target.replace('-', '_')),
+                    getattr(self, subclass)(self, **{subclass:target})
+                )
 
-
-    def _loadData(self):
-        self._manifest = self._api.skillGet(self._id)
+    def _loadData(self, manifest=None):
+        if not manifest:
+            manifest = self._api.skillGet(self._id)
+        self._manifest = manifest
 
     @classmethod
     def _replacePath(cls, path, data):
@@ -408,6 +496,7 @@ class AlexaSkill(object):
         return value
 
     def get(self, param, **kwargs):
+        print "get(%s, %s)" % (param, kwargs)
         paramDef = self._structure.get(param)
         value = self._doIterPath(paramDef, False, **kwargs)
 
@@ -535,15 +624,56 @@ class AlexaFlashBriefingSkill(AlexaSkill):
 
 
 class AlexaVideoSkill(AlexaSkill):
-    _subdict = copy(AlexaSkill._subdict)
-    _subdict['catalogInformation'] = ['sourceId', 'type']
 
+    _subdict = copy(AlexaSkill._subdict)
+    _subdict['catalogInformation'] = {
+        'sourceId': types.StringType,
+        'type': ['FIRE_TV'],
+    }
     _structure = copy(AlexaSkill._structure)
     _structure['catalogInformation'] = (True, 'apis.video.locales.{locale}.catalogInformation', types.ListType)
     _structure['videoProviderTargetingNames'] = (True, 'apis.video.locales.{locale}.videoProviderTargetingNames', types.ListType)
 
-    _structure['upchannelRegionUri'] = (True, 'apis.smartHome.endpoint.uri', types.StringType)
-    _structure['upchannelRegionType'] = (True, 'apis.smartHome.endpoint.type', types.StringType)
+    _structure['videoEndpointUri'] = (True, 'apis.video.endpoint.uri', types.ListType)
+    _structure['videoEndpointRegionUri'] = (True, 'apis.video.regions.{region}.endpoint.uri', types.StringType)
+
+    _structure['upchannelRegionUri'] = (True, 'apis.video.regions.{region}.upchannel.uri', types.StringType)
+    _structure['upchannelRegionType'] = (True, 'apis.video.regions.{region}.upchannel.type', types.StringType)
+
+
+def AlexaSKillFactory(api, skillID):
+    #  detect correct class
+    manifest = api.skillGet(skillID)
+    if manifest.get('apis', {}).get('smartHome'):
+        baseClass = AlexaSmartHomeSkill
+    elif manifest.get('apis', {}).get('householdList'):
+        baseClass = AlexaListSkill
+    elif manifest.get('apis', {}).get('flashBriefing'):
+        baseClass = AlexaFlashBriefingSkill
+    elif manifest.get('apis', {}).get('video'):
+        baseClass = AlexaVideoSkill
+    else:
+        baseClass = AlexaSkill
+
+    # add attributes
+    for key, attribDef in baseClass._structure.items():
+        sub = KWARGS_PAT.findall(attribDef[1])
+        if len(sub) == 1:
+            # arguments with placeholders
+            subclass = sub[0]
+            if not hasattr(baseClass, subclass):
+                setattr(baseClass, subclass, ParamField)
+            setattr(getattr(baseClass, subclass), key, Field(key))
+        elif len(sub) > 1:
+            # if necessary need to implement this
+            raise Exception('Unable to handle "%s" more han one subkey: %s' % (sub, ))
+        else:
+            # the normal attribs without parameter
+            setattr(baseClass, key, Field(key))
+
+    return baseClass(api, skillID, manifest)
+
+
 
 if __name__ == '__main__':
     import sys
@@ -565,70 +695,13 @@ if __name__ == '__main__':
         skills = api.skillList(vendorID)
         skillID = skills.values()[0]['skillId']
 
-    skill = AlexaSkill(api, skillID)
+    skill = AlexaSKillFactory(api, skillID)
     print "Skill: %s" % skill
     for value in ['manifestVersion', 'allowsPurchases', 'permissions']:
         print "Skill-%s: %s" % (value, skill.get(value))
-    # print "Skill: %s" % dir(skill)
-    # print "Skill.manifestVersion: %s" % skill.manifestVersion
+    print "Skill: %s" % dir(skill)
+    print "Skill.manifestVersion: %s" % skill.manifestVersion
     # print "Skill.manifestVersion: %s" % dir(skill.manifestVersion)
-    class Test(object):
-        val = {}
-
-        class VarProxy(object):
-                def __init__(self, data, key):
-                    self._data = data
-                    self._key = key
-
-                def __set__(self, obj, val):
-                    print "__set__ %s %s" % (obj, val)
-                    # self._data[self._key] = val
-                    obj.setval(self._key, val)
-
-                def __get__(self, obj, objtype):
-                    print "__get__ %s %s" % (obj, objtype)
-                    # return self._data.get(self._key)
-                    return obj.getval(self._key)
-
-        def setval(self, param, value):
-            print "setval: %s %s %s" % (self, param, value)
-            self.val[param] = value
-
-        def getval(self, param, arg2=None):
-            print "getval self: %s param: %s arg2: %s" % (self, param, arg2)
-            return self.val.get(param, '-')
-
-        def delval(self, param):
-            print "delval self: %s param: %s arg2: %s" % (self, param, arg2)
-            del(self.val) #.get(param, '-')
-
-        # def __setattr__(self, param, val):
-        #     print "> setattr > %s" % param
-        #     if param == 'test1':
-        #         return functool.partial(self.setval, 'test1', val)
-        #     else:
-        #        raise AttributeError('%s.%s has no member %s' % (
-        #         self.__class__.__module__, self.__class__.__name__, param))
-
-
-        def __init__(self):
-            pass
-
-        test1 = VarProxy(val, 'test1')
-
-
-    test = Test()
-    print dir(test)
-    print 'test.val ', test.val
-    print 'test.test1 ', test.test1
-    test.test1 = 'blub'
-    # test.set_test1('foor')
-    print 'test.test1 ', test.test1
-    print 'test.val ', test.val
-    # print 'test.bar ', test.bar
-    # print 'test.bar ', test.bar
-    # print 'test.bar ', test.bar
-
-
-
+    print "Skill.locale_de_DE: %s" % dir(skill.locale_de_DE)
+    print "Skill.locale_de_DE.name: %s" % skill.locale_de_DE.name
 
