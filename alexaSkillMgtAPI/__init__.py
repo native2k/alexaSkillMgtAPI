@@ -6,5 +6,5 @@ __email__ = 'native2k@gmail.com'
 __version__ = '0.1.0'
 
 from AlexaMgtAPI import AlexaMgtAPI
-from AlexaSkill import AlexaSKillFactory
+from AlexaSkill import AlexaSkillFactory
 from settings import Settings

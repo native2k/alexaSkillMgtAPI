@@ -10,7 +10,7 @@ Tests for `alexaSkill` module.
 import pytest
 import types
 from pprint import pformat
-from alexaSkillMgtAPI.AlexaSkill import AlexaSKillFactory
+from alexaSkillMgtAPI.AlexaSkill import AlexaSkillFactory
 
 
 @pytest.fixture
@@ -615,7 +615,7 @@ class TestAlexaSkill(object):
     def test_getParam(self, skillId, param, kwargs, exp, api):
         print "SkillID: %s, param: %s, KWargs: %s -> expected: %s" % (
             skillId, param, kwargs, exp)
-        skill = AlexaSKillFactory(api, skillId)
+        skill = AlexaSkillFactory(api, skillId)
         res = skill.get(param, **kwargs)
         print "res: %s" % (res, )
         assert res == exp

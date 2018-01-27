@@ -17,14 +17,17 @@ log.addHandler(logging.NullHandler())
 class AlexaInteractionModel(AlexaInterface):
 
     _subdict = {
-
+        'intents': {
+            'name': types.StringType,
+            'sample': types.ListType,
+        },
     }
     _structure = {
-
+        'invocationName': (True, 'invocationName', types.StringType),
+        'intents': (True, 'intents', types.ListType),
     }
-    _subclass = {
+    # _subclass = {}
 
-    }
     def __init__(self, id, data=None, api=None):
         if not api or not data:
             raise Exception("You need to provide on of 'api' or 'data'.")
@@ -59,7 +62,7 @@ if __name__ == '__main__':
     import sys
     from settings import Settings
     from AlexaMgtAPI import AlexaMgtAPI
-    from AlexaSkill import AlexaSKillFactory
+    from AlexaSkill import AlexaSkillFactory
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -78,7 +81,7 @@ if __name__ == '__main__':
         skills = api.skillList(vendorID)
         skillID = skills.values()[0]['skillId']
 
-    skill = AlexaSKillFactory(api, skillID)
+    skill = AlexaSkillFactory(api, skillID)
 
     if len(sys.argv) > 3:
         locale = sys.argv[3]

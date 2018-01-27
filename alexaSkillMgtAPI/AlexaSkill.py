@@ -194,7 +194,7 @@ class AlexaVideoSkill(AlexaSkill):
     _structure['upchannelRegionType'] = (True, 'apis.video.regions.{region}.upchannel.type', types.StringType)
 
 
-def AlexaSKillFactory(api, skillID):
+def AlexaSkillFactory(api, skillID):
     #  detect correct class
     manifest = api.skillGet(skillID)
     if manifest.get('apis', {}).get('smartHome'):
@@ -208,23 +208,6 @@ def AlexaSKillFactory(api, skillID):
     else:
         baseClass = AlexaSkill
 
-    # # add attributes
-    # for key, attribDef in baseClass._structure.items():
-    #     sub = KWARGS_PAT.findall(attribDef[1])
-    #     if len(sub) == 1:
-    #         # arguments with placeholders
-    #         subclass = sub[0]
-    #         if not hasattr(baseClass, subclass):
-    #             setattr(baseClass, subclass, ParamField)
-    #         setattr(getattr(baseClass, subclass), key, Field(key))
-    #     elif len(sub) > 1:
-    #         # if necessary need to implement this
-    #         raise Exception('Unable to handle "%s" more han one subkey: %s' % (sub, ))
-    #     else:
-    #         # the normal attribs without parameter
-    #         setattr(baseClass, key, Field(key))
-
-    # return baseClass(api, skillID, manifest)
     return AlexaInterfaceFactory(baseClass, skillID, manifest, api=api)
 
 
@@ -250,7 +233,7 @@ if __name__ == '__main__':
         skills = api.skillList(vendorID)
         skillID = skills.values()[0]['skillId']
 
-    skill = AlexaSKillFactory(api, skillID)
+    skill = AlexaSkillFactory(api, skillID)
     print "Skill: %s" % skill
     for value in ['manifestVersion', 'allowsPurchases', 'permissions']:
         print "Skill-%s: %s" % (value, skill.get(value))
