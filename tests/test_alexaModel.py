@@ -39,6 +39,21 @@ def testdata():
                       {u'name': u'AMAZON.MoreIntent'},
                       {u'name': u'AMAZON.NavigateSettingsIntent'}],
          u'invocationName': u'law blog'},
+        {u'intents': [{u'name': u'start', u'samples': [u'start']},
+                      {u'name': u'AMAZON.NavigateSettingsIntent'}],
+         u'invocationName': u'law blog'},
+        {u'intents': [{
+               u'name': u'AnswerIntent',
+               u'samples': [u'{answer}'],
+               u'slots': [{u'name': u'answer', u'type': u'ANSWERTYPE'}]},
+              {u'name': u'AMAZON.HelpIntent'}],
+         u'invocationName': u'saechsisch quiz',
+         u'types': [{u'name': u'ANSWERTYPE',
+                     u'values': [{u'name': {u'value': u'Aschkuchen'}},
+                                 {u'name': {u'value': u'Auf Wiedersehen'}}]
+                    }],
+        },
+
     ]
 
 
@@ -50,6 +65,24 @@ class TestAlexaSkill(object):
     """
     @pytest.mark.parametrize('modelid, param, exp', [
         (0, 'invocationName', 'law blog'),
+        (1, 'invocationName', 'law blog'),
+        (1, 'intents', [
+            {'name': 'start', 'samples': ['start']},
+            {'name': 'AMAZON.NavigateSettingsIntent'},
+        ]),
+        (2, 'invocationName', 'saechsisch quiz'),
+        (2, 'intents', [
+            {'name': 'AnswerIntent', 'samples': ['{answer}'],
+             'slots': [{'name': 'answer', 'type': 'ANSWERTYPE'}]},
+            {'name': 'AMAZON.HelpIntent'},
+        ]),
+        (2, 'types', [
+            {'name': "ANSWERTYPE", 'values': [
+                {'name': {'value': 'Aschkuchen'}},
+                {'name': {'value': 'Auf Wiedersehen'}},
+            ]},
+        ]),
+
     ])
     def test_getParam(self, modelid, param, exp, api):
         print "ModelID: %s, param: %s,  -> expected: %s" % (

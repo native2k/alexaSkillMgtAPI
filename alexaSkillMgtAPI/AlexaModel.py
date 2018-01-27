@@ -19,12 +19,21 @@ class AlexaInteractionModel(AlexaInterface):
     _subdict = {
         'intents': {
             'name': types.StringType,
-            'sample': types.ListType,
+            'samples': types.ListType,
+            'slots': RestrictedDict({
+                'name': types.StringType,
+                'type': types.StringType,
+                }),
         },
+        'types': {
+            'name': types.StringType,
+            'values': types.ListType,
+        }
     }
     _structure = {
         'invocationName': (True, 'invocationName', types.StringType),
         'intents': (True, 'intents', types.ListType),
+        'types': (True, 'types', types.ListType),
     }
     # _subclass = {}
 
