@@ -64,8 +64,8 @@ class AlexaSkill(AlexaInterface):
         'examplePhrases': (True, 'publishingInformation.locales.{locale}.examplePhrases', types.ListType),
         'keywords': (True, 'publishingInformation.locales.{locale}.keywords', types.ListType),
         'name': (True, 'publishingInformation.locales.{locale}.name', types.StringType),
-        'smallIconUri': (True, 'publishingInformation.locales.{locale}.smallIconUri', types.StringType),
-        'largeIconUri': (True, 'publishingInformation.locales.{locale}.largeIconUri', types.StringType),
+        'smallIconUri': (False, 'publishingInformation.locales.{locale}.smallIconUri', types.StringType),
+        'largeIconUri': (False, 'publishingInformation.locales.{locale}.largeIconUri', types.StringType),
         'description': (True, 'publishingInformation.locales.{locale}.description', types.StringType),
 
         'isAvailableWorldwide': (True, 'publishingInformation.isAvailableWorldwide', types.BooleanType),
@@ -243,4 +243,4 @@ if __name__ == '__main__':
     print "Skill.locale_de_DE: %s" % dir(skill.locale_de_DE)
     print "Skill.locale_de_DE.name: %s" % skill.locale_de_DE.name
     print "Skill._model['de-DE']: %s" % pformat(skill._model.get('de-DE'))
-
+    print "Skill.serizlize: \n%s" % skill.serializeToYaml()

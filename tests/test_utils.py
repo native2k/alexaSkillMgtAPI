@@ -10,8 +10,37 @@ Tests for `alexaSkill` module.
 import pytest
 import types
 from pprint import pformat
-from alexaSkillMgtAPI.utils import ListOverlay, RestrictedDict, RestrictedList
+from alexaSkillMgtAPI.utils import ListOverlay, RestrictedDict, RestrictedList, kwargsPermutations
 
+
+@pytest.mark.parametrize('data,exp', [
+    ({}, []),
+    ({'a': [1]}, [{'a': 1}]),
+    ({'a': [1, 2]}, [{'a': 1}, {'a': 2}]),
+    ({'a': [1], 'b': [2]}, [{'a': 1, 'b': 2}]),
+    ({'a': [1, 2], 'b': [3]}, [{'a': 1, 'b': 3}, {'a': 2, 'b': 3}]),
+    ({'a': [1, 2], 'b': [3, 4]},  [
+        {'a': 1, 'b': 3}, {'a': 2, 'b': 3},
+        {'a': 1, 'b': 4}, {'a': 2, 'b': 4},
+    ]),
+    ({'a': [1, 2, 3], 'b': [4, 5, 6]}, [
+        {'a': 1, 'b': 4}, {'a': 2, 'b': 4}, {'a': 3, 'b': 4},
+        {'a': 1, 'b': 5}, {'a': 2, 'b': 5}, {'a': 3, 'b': 5},
+        {'a': 1, 'b': 6}, {'a': 2, 'b': 6}, {'a': 3, 'b': 6},
+    ]),
+    ({'a': [1, 4], 'b': [2, 5], 'c': [3, 6]}, [
+        {'a': 1, 'b': 2, 'c': 3}, {'a': 4, 'b': 2, 'c': 3},
+        {'a': 1, 'b': 5, 'c': 3}, {'a': 4, 'b': 5, 'c': 3},
+        {'a': 1, 'b': 2, 'c': 6}, {'a': 4, 'b': 2, 'c': 6},
+        {'a': 1, 'b': 5, 'c': 6}, {'a': 4, 'b': 5, 'c': 6},
+    ]),
+])
+def test_kwargsPermutations(data, exp):
+    print "Input Data: %s " % pformat(data)
+    print "Expected:   %s " % pformat(exp)
+    res = kwargsPermutations(data)
+    print "Result:     %s"  % pformat(res)
+    assert sorted(res) == sorted(exp)
 
 
 class TestListOverlay(object):

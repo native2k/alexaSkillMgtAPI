@@ -125,7 +125,7 @@ class Settings(object):
 
         data[BASE_KEY].update(self._config)
         with open(self.configFile, 'w') as outfile:
-            yaml.dump(data, outfile, default_flow_style=False)
+            yaml.safe_dump(data, outfile, default_flow_style=False)
         return True
 
     def updateWithResponse(self, response):

@@ -100,6 +100,8 @@ if __name__ == '__main__':
     model = AlexaModelFactory(api, skillID, locale)
     print "Model: %s" % model
     print "Model: %s" % dir(model)
+    print "Model.invocationName: %s" % model.invocationName
+    print "Model serialize: \n%s" % model.serializeToYaml()
 
 
 

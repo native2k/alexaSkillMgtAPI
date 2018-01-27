@@ -2,17 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import yaml
 import types
 import re
+import itertools
 from copy import copy
 from pprint import pformat
-from utils import ListOverlay, RestrictedDict, RestrictedList, Field, ParamField
+from utils import ListOverlay, RestrictedDict, RestrictedList, Field, ParamField, kwargsPermutations
 
 log = logging.getLogger('AlexaSkillMgtAPI')
 log.addHandler(logging.NullHandler())
 
 KWARGS_PAT = re.compile('\.{([a-z]+)}\.')
-
 
 
 class AlexaInterface(object):
@@ -55,6 +56,38 @@ class AlexaInterface(object):
             getattr(self, subclass)(self, **{subclass:target})
         )
 
+    def __repr__(self):
+        return '<%s.%s object at %s id=%s>' % (
+            self.__class__.__module__, self.__class__.__name__,
+            hex(id(self)), pformat(self._id))
+
+    def _argsForKey(self, key):
+        if isinstance(key, types.StringType):
+            path = self._structure[key][1]
+        elif isinstance(key, types.TupleType):
+            path = key[1]
+        else:
+            raise Excpetion("Invalid key %s" % pformat(key))
+        log.debug('key: %s - path: %s' % (key, path))
+        return KWARGS_PAT.findall(path)
+
+    def _kwargsForKey(self, key):
+        args = self._argsForKey(key)
+        # now collect all possible values
+        targets = {}
+        for arg in args:
+            targets[arg] = set()
+            for req in self._subclass[arg]:
+                try:
+                    targets[arg] =targets[arg].union(self.get(req, []))
+                    # log.debug('kwargs4Key: %s - %s' % (req, self.get(req)))
+                except Exception, e :
+                    pass
+                    # log.warning('Retrieval error: %s' % e)
+        # build all possible kwarg permutations
+        # log.debug('kwargs4Key: %s - args: %s -> %s' % (key, args, targets))
+        return kwargsPermutations(targets)
+
     @classmethod
     def _replacePath(cls, path, data):
         needReplace = KWARGS_PAT.findall(path)
@@ -91,10 +124,17 @@ class AlexaInterface(object):
         value = self._iterPath(self._data, path)
         return value
 
-    def get(self, param, **kwargs):
+    def get(self, param, default=Exception, **kwargs):
         log.debug("get(%s, %s)" % (param, kwargs))
         paramDef = self._structure.get(param)
-        value = self._doIterPath(paramDef, False, **kwargs)
+
+        try:
+            value = self._doIterPath(paramDef, False, **kwargs)
+        except Exception, e:
+            if isinstance(default, Exception):
+                raise (e)
+            return default
+
 
         if param in self._subdict:
             subdictDef = self._subdict[param]
@@ -154,10 +194,38 @@ class AlexaInterface(object):
             else:
                 data[key] = value
 
-    def __repr__(self):
-        return '<%s.%s object at %s id=%s>' % (
-            self.__class__.__module__, self.__class__.__name__,
-            hex(id(self)), pformat(self._id))
+    def serializeToYaml(self, file=None):
+        data = {}
+        for key, definition in self._structure.items():
+            if not definition[0] or isinstance(definition[2], types.StringType):
+                continue
+
+            argnames = self._argsForKey(key)
+            args = self._kwargsForKey(key)
+            log.debug('key: %s -> %s: %s' % (key, argnames, args))
+            if argnames and not args:
+                continue
+            if not args:
+                args = [{}]
+
+            for kwargs in args:
+                value = self.get(key, None, **kwargs)
+                log.debug('>> %s (%s) = %s' % (key, kwargs, value))
+                if value or isinstance(value, types.BooleanType) :
+                    # travel down depending on kwargs
+                    ref = data
+                    for subkey in sorted(kwargs.keys()):
+                        if not subkey in ref:
+                            ref[subkey] = {}
+                        ref = ref[subkey]
+                        if not kwargs[subkey] in ref:
+                            ref[kwargs[subkey]] = {}
+                        ref = ref[kwargs[subkey]]
+                    # set value
+                    ref[key] = value
+        # return data
+        # return yaml.safe_dump(data, file, default_flow_style=False, allow_unicode=False)
+        return yaml.safe_dump(data, file, default_flow_style=False, allow_unicode=True)
 
 
 def AlexaInterfaceFactory(baseClass, id, data, **kwargs):

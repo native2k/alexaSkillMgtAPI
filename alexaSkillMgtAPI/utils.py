@@ -12,6 +12,32 @@ log = logging.getLogger('AlexaSkillMgtAPI')
 log.addHandler(logging.NullHandler())
 
 
+def kwargsPermutations(data):
+    """ build all permutations from data
+
+    >>> kwargsPermutations({'a': [1, 2], 'b': [3]})
+    [{'a': 1, 'b': 3}, {'a': 2, 'b': 3}]
+
+    """
+    results = []
+    for key, items in data.items():
+        if not results:
+            for item in items:
+                results.append({key: item})
+        else:
+            temp = []
+            for result in results:
+                print "results: %s - %s" % (results, result)
+                result[key] = items[0]
+                temp.append(result)
+            for item in items[1:]:
+                for res in temp:
+                    cres = copy(res)
+                    res[key] = item
+                    results.append(cres)
+    return results
+
+
 class Field(object):
     """ A manifest field """
 
