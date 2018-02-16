@@ -65,12 +65,18 @@ class ParamField(object):
 
 def validConvert(value, adef):
     # print "aDef: %s value: %s Valuetyep: %s" % (adef, value, type(value))
-    # if not isinstance(adef, types.ListType):
-    #     print "isnstand %s"  % isinstance(value, adef)
     if isinstance(adef, types.ListType):
         if value not in adef:
             raise ValueError('Value "%s" must be one of %s' % (
                 value, adef))
+    elif isinstance(adef, types.StringType):
+        if not isinstance(value, types.ListType):
+            raise ValueError('Value "%s" must be a List' % (
+                value, ))
+    elif isinstance(adef, types.DictType):
+        if not isinstance(value, types.DictType):
+            raise ValueError('Value "%s" must be a Dictionary' % (
+                value, ))
     elif not isinstance(value, adef):
         if adef == types.StringType and isinstance(value, types.IntType) and not isinstance(value, types.BooleanType):
             return str(value)   # exception for numeric value
@@ -81,6 +87,84 @@ def validConvert(value, adef):
             value, type(value), adef))
     return value
 
+class DictOverlay(dict):
+
+    def __init__(self, definition, orig):
+        self._definition = definition
+        self._orig = orig
+
+
+    def __to_orig(self, v):
+        result = point = {}
+        deflist = self._definition.split('.')
+        for k in deflist[:-1]:
+            point[k] = {}
+            point = point[k]
+        point[deflist[-1]] = self.__doValidate(v)
+        return result
+        # return {self._definition: self.__doValidate(v)}
+
+    def __from_orig(self, i):
+        deflist = self._definition.split('.')
+        point = i
+        for k in deflist:
+            point = point[k]
+        return point
+
+    def __doValidate(self, value):
+        if self._allowedTypes is None:
+            return value
+        else:
+            return validConvert(value, self._allowedTypes)
+
+    def __getitem__(self, key):
+        if key not in self._definition:
+            return ValueError('Invalid key %s' % (key, ))
+        # self.__from_orig(self._orig.__getitem__())
+        # print "__getitem__: [%s] %s => %s" % (key, self._definition.get(key), self._orig.get(key))
+        if isinstance(self._definition.get(key), types.StringType):
+            return ListOverlay(self._definition[key], self._orig.__getitem__(key))
+        elif isinstance(self._definition.get(key), types.DictType):
+            return DictOverlay(self._definition[key], self._orig.__getitem__(key))
+        else:
+            return self._orig.__getitem__(key)
+
+    def __setitem__(self, key, value):
+        if key not in self._definition:
+            return ValueError('Invalid element %s' % (key, ))
+
+        if isinstance(self._definition.get(key), types.StringType):
+            if not self._orig.get(key):
+                self._orig[key] = []
+            if isinstance(value, ListOverlay):
+                self._orig[key] = value._orig
+            elif isinstance(value, types.ListType):
+                self._orig[key] = self._orig[key][:0]
+                # print type(self[key])
+                for val in value:
+                    self[key].append(val)
+                # print 'self[key]', self[key]
+                # print '_orig[key]', self._orig[key]
+            else:
+                raise ValueError('Invalid type %s for element %s' % (type(value), key))
+            # return ListOverlay(self._definition[key], self._orig.__getitem__(key))
+        elif isinstance(self._definition.get(key), types.DictType):
+            # return ListOverlay(self._definition[key], self._orig.__getitem__(key))
+            if not self._orig.get(key):
+                self._orig[key] = {}
+            if isinstance(value, DictOverlay):
+                self._orig[key] = value._orig
+            elif isinstance(value, types.DictType):
+                self._orig[key] = {}
+                for k, v in value.items():
+                    self[k] = v
+            else:
+                raise ValueError('Invalid type %s for element %s' % (type(value), key))
+        else:
+            self._orig[key] = validConvert(value, self._definition.get(key))
+
+    def setdefault(self, key, value=None):
+        return self._orig.setdefault(key, validConvert(value, self._definition.get(key)))
 
 class ListOverlay(list):
 
@@ -106,23 +190,41 @@ class ListOverlay(list):
             else:
                 raise StopIteration()
 
+
+    def __to_orig(self, v):
+        result = point = {}
+        deflist = self._definition.split('.')
+        for k in deflist[:-1]:
+            point[k] = {}
+            point = point[k]
+        point[deflist[-1]] = self.__doValidate(v)
+        return result
+        # return {self._definition: self.__doValidate(v)}
+
+    def __from_orig(self, i):
+        deflist = self._definition.split('.')
+        point = i
+        for k in deflist:
+            point = point[k]
+        return point
+
     def __init__(self, definition, orig, allowedTypes=None):
         self._definition = definition
         self._orig = orig
         self._allowedTypes = allowedTypes
 
-    def _doValidate(self, value):
+    def __doValidate(self, value):
         if self._allowedTypes is None:
             return value
         else:
             return validConvert(value, self._allowedTypes)
 
     def __add__(self, y):
-        res = self._orig.__add__([{self._definition: _doValidate(v)} for v in y])
+        res = self._orig.__add__([self.__to_orig(v) for v in y])
         return ListOverlay(self._definition, res, self._allowedTypes)
 
     def __contains__(self, y):
-        return self._orig.__contains__({self._definition: y})
+        return self._orig.__contains__(self.__to_orig(y))
 
     def __delitem__(self, y):
         self._orig.__delitem__(y)
@@ -131,57 +233,57 @@ class ListOverlay(list):
         self._orig.__delslice__(i, j)
 
     def __eq__(self, y):
-        return self._orig.__eq__([{self._definition: v} for v in y])
+        return self._orig.__eq__([self.__to_orig(v) for v in y])
 
     # format?
     def __ge__(self, y):
-        return self._orig.__ge__([{self._definition: v} for v in y])
+        return self._orig.__ge__([self.__to_orig(v) for v in y])
 
     def __getitem__(self, y):
-        return self._orig.__getitem__(y)[self._definition]
+        return self.__from_orig(self._orig.__getitem__(y))
 
     def __getslice__(self, i, y):
-        return [n[self._definition] for n in self._orig.__getslice__(i, j)]
+        return [self.__from_orig(n) for n in self._orig.__getslice__(i, j)]
 
     def __gt__(self, y):
-        return self._orig.__gt__([{self._definition: v} for v in y])
+        return self._orig.__gt__([self.__to_orig(v) for v in y])
 
     def __hash__(self):
         return self._orig.__hash__()
 
     def __iadd__(self, y):
-        self._orig.__iadd__([{self._definition: v} for v in y])
+        self._orig.__iadd__([self.__to_orig(v) for v in y])
         return self
 
     def __imul__(self, y):
-        self._orig.__imul__([{self._definition: v} for v in y])
+        self._orig.__imul__([self.__to_orig(v) for v in y])
         return self
 
     def __ne__(self, y):
-        return self._orig.__ne__([{self._definition: v} for v in y])
+        return self._orig.__ne__([self.__to_orig(v) for v in y])
 
     def __iter__(self):
         return self.Iterator(self)
 
 
     def __le__(self, y):
-        return self._orig.__le__([{self._definition: v} for v in y])
+        return self._orig.__le__([self.__to_orig(v) for v in y])
 
     def __len__(self):
         return self._orig.__len__()
 
     def __lt__(self, y):
-        return self._orig.__lt__([{self._definition: v} for v in y])
+        return self._orig.__lt__([self.__to_orig(v) for v in y])
 
     def __mul__(self, y):
-        res = self._orig.__mul__([{self._definition: v} for v in y])
+        res = self._orig.__mul__([self.__to_orig(v) for v in y])
         return ListOverlay(self._definition, res)
 
     def __ne__(self, y):
-        return self._orig.__lt__([{self._definition: v} for v in y])
+        return self._orig.__lt__([self.__to_orig(v) for v in y])
 
     def __repr__(self):
-        return [v[self._definition] for v in self._orig].__repr__()
+        return [self.__from_orig(v) for v in self._orig].__repr__()
 
     def __reversed__(self):
         return self.Iterator(self, True)
@@ -190,10 +292,11 @@ class ListOverlay(list):
         return ListOverlay(self._definition, self._orig.__rmul__(n), self._allowedTypes)
 
     def __setitem__(self, i, y):
-        self._orig[i][self._definition] = self._doValidate(y)
+        self._orig.__setitem__(i, self.__to_orig(y))
+        # self.__from_orig(self._orig[i]) = self._doValidate(y)
 
     def __setslice__(self, i, j, y):
-        self._orig[i:j] = [{self._definition: self._doValidate(n)} for n in y]
+        self._orig[i:j] = [self.__to_orig(n) for n in y]
 
     def __sizeof__(self):
         return self._orig.__sizeof__()
@@ -203,19 +306,19 @@ class ListOverlay(list):
             self.append(self._doValidate(i))
 
     def append(self, object):
-        self._orig.append({self._definition: self._doValidate(object)})
+        self._orig.append(self.__to_orig(object))
 
     def index(self, object):
-        return self._orig.index({self._definition: object})
+        return self._orig.index(self.__to_orig(object))
 
     def insert(self, index, object):
-        return self._orig.insert(index, {self._definition: self._doValidate(object)})
+        return self._orig.insert(index, self.__to_orig(object))
 
     def pop(self, index=-1):
-        return self._orig.pop(index)[self._definition]
+        return self.__from_orig(self._orig.pop(index))
 
     def remove(self, value):
-        return self._origi.remove({self._definition: value})
+        return self._origi.remove(self.__to_orig(v))
 
     def reverse(self):
         self._orig.reverse()
@@ -224,7 +327,7 @@ class ListOverlay(list):
         cmpNew = None
         if cmp is not None:
             def cmpNew(x, y):
-                return cmp(x[self._definition], y[self._definition])
+                return cmp(self.__from_orig(x), self.__from_orig(y))
 
         self._orig.sort(cmpNew, key, reverse)
 

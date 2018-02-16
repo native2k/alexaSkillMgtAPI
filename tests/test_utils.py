@@ -10,7 +10,7 @@ Tests for `alexaSkill` module.
 import pytest
 import types
 from pprint import pformat
-from alexaSkillMgtAPI.utils import ListOverlay, RestrictedDict, RestrictedList, kwargsPermutations
+from alexaSkillMgtAPI.utils import ListOverlay, DictOverlay, RestrictedDict, RestrictedList, kwargsPermutations
 
 
 @pytest.mark.parametrize('data,exp', [
@@ -43,7 +43,85 @@ def test_kwargsPermutations(data, exp):
     assert sorted(res) == sorted(exp)
 
 
+
+class TestDictOverlay(object):
+
+    def test_operations(self):
+        adict = {
+            'foo': 1,
+            'bar': 'foo',
+            'alist': [
+                {'a':{'b': 0}},
+                {'a':{'b': 1}},
+            ]
+        }
+        definition = {
+            'foo': types.IntType,
+            'bar': types.StringType,
+            'alist': 'a.b',
+            'adict': {
+                'aint': types.IntType,
+                'astring': types.StringType,
+                'alist': 'c.d',
+            }
+        }
+        aoverlay = DictOverlay(definition, adict)
+        assert aoverlay['foo'] == 1
+        assert aoverlay['bar'] == 'foo'
+        assert aoverlay['alist'] == [0,1]
+
+        aoverlay['foo'] += 2
+        assert aoverlay['foo'] == 3
+        assert adict['foo'] == 3
+
+        aoverlay['bar'] = 'bar'
+        assert aoverlay['bar'] == 'bar'
+        assert adict['bar'] == 'bar'
+
+        aoverlay['alist'].append(2)
+        assert aoverlay['alist'][2] == 2
+        assert adict['alist'][2] == {'a': {'b': 2}}
+
+        aoverlay['adict'] = {}
+        assert isinstance(aoverlay['adict'], DictOverlay)
+        assert aoverlay['adict']._definition == definition['adict']
+        aoverlay['adict']['aint'] = 5
+        assert adict['adict']['aint'] == 5
+        assert aoverlay['adict']['aint'] == 5
+
+        aoverlay['adict']['astring'] = 5
+        assert adict['adict']['astring'] == '5'
+        assert aoverlay['adict']['astring'] == '5'
+
+        aoverlay['adict']['alist'] = [1,2]
+        assert isinstance(aoverlay['adict']['alist'], ListOverlay)
+        assert aoverlay['adict']['alist']._definition == 'c.d'
+        assert aoverlay['adict']['alist']._orig == [{'c':{'d': 1}}, {'c':{'d': 2}}]
+        # print pformat(adict)
+        # print pformat(aoverlay)
+        assert adict['adict']['alist'] == [{'c':{'d': 1}}, {'c':{'d': 2}}]
+        assert aoverlay['adict']['alist'] == [1,2]
+
+
+
+
+
+
 class TestListOverlay(object):
+    def test_operationsDouble(self):
+        akey = 'a.b'
+        alist = [{'a':{'b': 0}}, {'a':{'b': 1}}, {'a':{'b': 2}}]
+        aoverlay = ListOverlay(akey, alist)
+        assert aoverlay == [0,1,2]
+        assert aoverlay.pop() == 2
+        assert len(aoverlay) == 2
+        assert alist == [{'a':{'b': 0}}, {'a':{'b': 1}}]
+        assert aoverlay[0] == 0
+        aoverlay.append(4)
+        assert len(alist) == 3
+        assert len(aoverlay) == 3
+        assert alist == [{'a':{'b': 0}}, {'a':{'b': 1}}, {'a':{'b': 4}}]
+
     def test_operations(self):
         akey = 'foo'
         alist = [{akey: 0}, {akey: 1}, {akey: 2}, {akey: 3}]
