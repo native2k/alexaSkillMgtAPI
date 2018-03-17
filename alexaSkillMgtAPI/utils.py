@@ -88,11 +88,78 @@ def validConvert(value, adef):
     return value
 
 class DictOverlay(dict):
+    # class DictOverlayKeyIterator(Iterator):
+    #     def __init__(self, n, reverse=False):
+    #         self.i = 0
+    #         self.reverse = reverse
+    #         self.n = n._orig.keys()
+    #         if self.reverse:
+    #             self.i = len(self.n) - 1
+
+    #     def __iter__(self):
+    #         return self
+
+    #     def next(self):
+    #         if self.i < len(self.n) and self.i >= 0:
+    #             i = self.n[self.i]
+    #             if self.reverse:
+    #                 self.i -= 1
+    #             else:
+    #                 self.i += 1
+    #             return i
+    #         else:
+    #             raise StopIteration()
+
+
+    class DictOverlayItemIterator():
+        """docstring for DictOverlayItemIterator"""
+
+        def __init__(self, n):
+           self.n = n
+           self.keyiter = n._orig.iterkeys()
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            key = self.keyiter.next()
+            return (key, self.n[key])
+
+
+    class DictOverlayValueIterator():
+        """docstring for DictOverlayItemIterator"""
+
+        def __init__(self, n):
+           self.n
+           self.keyiter = n._orig.iterkeys()
+
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            key = self.keyiter.next()
+            return self.n[key]
+
+
 
     def __init__(self, definition, orig):
         self._definition = definition
         self._orig = orig
 
+    def __eq__(self, y):
+        if isinstance(y, DictOverlay):
+            return y._orig == self._orig
+        elif isinstance(y, types.DictType):
+            nd = DictOverlay(self._definition, {})
+            for k, v in y.items():
+                nd[k] = v
+            return nd._orig == self._orig
+        else:
+            return False
+
+    def __iter__(self):
+        return self.iterkeys()
 
     def __to_orig(self, v):
         result = point = {}
@@ -166,9 +233,67 @@ class DictOverlay(dict):
     def setdefault(self, key, value=None):
         return self._orig.setdefault(key, validConvert(value, self._definition.get(key)))
 
+    def items(self):
+        return list(self.iteritems())
+
+    def iteritems(self):
+        return self.DictOverlayItemIterator(self)
+
+    def iterkeys(self):
+        return slef._orig.iterkeys()
+
+    def keys(self):
+        return self._orig.keys()
+
+    def itervalues(self):
+        return self.DictOverlayValueIterator(self)
+
+    def values(self):
+        return list[self.itervalues()]
+
+    def values(self):
+        return [self[k] for k in self._orig.keys()]
+
+    def has_key(self, key):
+        return key in self._orig
+
+    def clear(self):
+        return self._orig.clear()
+
+    def copy(self):
+        orig = self._orig.copy()
+        definition = self._definition.copy()
+        return DictOverlay(definition, orig)
+
+    def get(self, key, default=None):
+        if key in self._orig:
+            return self[key]
+        else:
+            return default
+
+    def pop(self, key):
+        val = self[key]
+        del(self[key])
+        return  val
+
+    def popitem(self, key):
+        val = self.pop(key)
+        return (key, val)
+
+    def update(self, data):
+        for k, v in data.items():
+            if isinstance(v, types.DictType) and k in v:
+                self[k].update(v)
+            else:
+                self[k] = v
+
+    def __repr__(self):
+        return '{%s}' % (', '.join(['%s: %s' % (k.__repr__(), v.__repr__()) for k, v in self.items()]))
+
+
 class ListOverlay(list):
 
-    class Iterator():
+    class ListOverlayIterator():
         def __init__(self, n, reverse=False):
             self.i = 0
             self.reverse = reverse
@@ -263,7 +388,7 @@ class ListOverlay(list):
         return self._orig.__ne__([self.__to_orig(v) for v in y])
 
     def __iter__(self):
-        return self.Iterator(self)
+        return self.ListOverlayIterator(self)
 
 
     def __le__(self, y):
@@ -286,7 +411,7 @@ class ListOverlay(list):
         return [self.__from_orig(v) for v in self._orig].__repr__()
 
     def __reversed__(self):
-        return self.Iterator(self, True)
+        return self.ListOverlayIterator(self, True)
 
     def __rmul__(self, n):
         return ListOverlay(self._definition, self._orig.__rmul__(n), self._allowedTypes)

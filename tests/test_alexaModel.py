@@ -57,8 +57,7 @@ def testdata():
     ]
 
 
-class TestAlexaSkill(object):
-
+class TestAlexaModel(object):
 
     """
         Test methods
@@ -76,11 +75,15 @@ class TestAlexaSkill(object):
              'slots': [{'name': 'answer', 'type': 'ANSWERTYPE'}]},
             {'name': 'AMAZON.HelpIntent'},
         ]),
+        # (2, 'types', [
+        #     {'name': "ANSWERTYPE", 'values': [
+        #         {'name': {'value': 'Aschkuchen'}},
+        #         {'name': {'value': 'Auf Wiedersehen'}},
+        #     ]},
+        # ]),
         (2, 'types', [
-            {'name': "ANSWERTYPE", 'values': [
-                {'name': {'value': 'Aschkuchen'}},
-                {'name': {'value': 'Auf Wiedersehen'}},
-            ]},
+            {'values': ['Aschkuchen', 'Auf Wiedersehen'],
+             'name': 'ANSWERTYPE'}
         ]),
 
     ])

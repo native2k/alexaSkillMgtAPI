@@ -7,7 +7,7 @@ import types
 from copy import copy
 from pprint import pformat
 
-from utils import ListOverlay, RestrictedDict, RestrictedList
+from utils import ListOverlay, DictOverlay, RestrictedDict, RestrictedList
 from AlexaInterface import AlexaInterface, AlexaInterfaceFactory
 
 log = logging.getLogger('AlexaSkillMgtAPI')
@@ -56,15 +56,32 @@ class AlexaInteractionModel(AlexaInterface):
         manifest = self._api.modelGet(*self._id)
         self._data = manifest
 
+    def _getTypes(self, param):
+        res = []
+        # print pformat(self._data[param])
+        for k in self._data.get(param):
+            res.append(DictOverlay({
+                'name': types.StringType,
+                'values':'name.value'
+            }, k))
+        return res
+
+    def get(self, param, default=Exception, **kwargs):
+        # print "%s.get(%s)" % (self.__class__.__name__, param)
+        if param == 'types':
+            return self._getTypes(param)
+        return super(AlexaInteractionModel, self).get(param, default, **kwargs)
+
+
 def AlexaModelFactory(api, skillID, locale):
     id = (skillID, locale)
     baseClass = AlexaInteractionModel
-    # try:
-    model = api.modelGet(skillID, locale)
-    return AlexaInterfaceFactory(baseClass, id, model, api=api)
-    # except Exception, e :
-    #     log.error("Could not load modell for language %s of skill %s" % (
-    #         locale, skillID))
+    try:
+        model = api.modelGet(skillID, locale)
+        return AlexaInterfaceFactory(baseClass, id, model, api=api)
+    except Exception, e :
+        log.error("Could not load modell for language %s of skill %s" % (
+            locale, skillID))
 
 
 if __name__ == '__main__':
@@ -98,9 +115,11 @@ if __name__ == '__main__':
         locale = skill.locales[0]
 
     model = AlexaModelFactory(api, skillID, locale)
+    print "Data: %s" % pformat(model._data)
     print "Model: %s" % model
     print "Model: %s" % dir(model)
     print "Model.invocationName: %s" % model.invocationName
+    print "Model.types: %s" % pformat(model.types)
     print "Model serialize: \n%s" % model.serializeToYaml()
 
 

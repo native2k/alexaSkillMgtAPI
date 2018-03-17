@@ -101,6 +101,7 @@ class TestDictOverlay(object):
         # print pformat(aoverlay)
         assert adict['adict']['alist'] == [{'c':{'d': 1}}, {'c':{'d': 2}}]
         assert aoverlay['adict']['alist'] == [1,2]
+        assert aoverlay.items()
 
 
 
